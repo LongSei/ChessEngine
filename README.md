@@ -1,7 +1,7 @@
 **Chess Engine Development Plan**
 
 ## Requirements
-- 2500 Elo
+- 2200 Elo
 - <10s inference
 
 ## References
