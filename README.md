@@ -5,11 +5,16 @@
 - <10s inference
 
 ## References
+- [Book about Deep-Learning approaches for Chess (like AlphaZero, Leela Chess Zero and Stockfish NNUE)](https://github.com/asdfjkl/neural_network_chess?tab=readme-ov-file)
+- [Minimax](https://vi.wikipedia.org/wiki/Minimax)
+- [Alpha–beta pruning](https://en.wikipedia.org/w/index.php?title=Alpha–beta_pruning&oldid=1068746141)
+- [Negamax](https://en.wikipedia.org/wiki/Negamax)
+- [Monte Carlo Search Tree](https://en.wikipedia.org/w/index.php?title=Monte_Carlo_tree_search&oldid=1067396622)
+
 - [Study of the Proper NNUE Dataset](https://arxiv.org/pdf/2412.17948)
 - [Shuffle Chess Engine](https://github.com/ArjunBasandrai/shuffle-chess-engine/?tab=readme-ov-file)
 - [Flounder: an RL Chess Agent](https://stanford.edu/~bartolo/assets/flounder.pdf)
 - [Chess engine with Deep Reinforcement learning](https://github.com/zjeffer/chess-deep-rl)
-- [Book about Deep-Learning approaches for Chess (like AlphaZero, Leela Chess Zero and Stockfish NNUE)](https://github.com/asdfjkl/neural_network_chess?tab=readme-ov-file)
 - [Stockfish NNUE (Chess evaluation) trainer in Pytorch](https://github.com/official-stockfish/nnue-pytorch/tree/master)
 
 ## **Phase 0: Research and Planning**
