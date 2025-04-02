@@ -163,7 +163,7 @@ class Knight(Piece):
         Example:
             >>> knight = Knight(color='white', position=(0, 1))
             >>> print(knight.get_valid_move())
-            ... [(2, 2), (2, 0)]
+            ... [(2, 2), (2, 0), ...]
         """
         x, y = self.position
         moves = [(x + 2, y + 1), (x + 2, y - 1), (x - 2, y + 1), (x - 2, y - 1),
@@ -184,7 +184,7 @@ class Bishop(Piece):
         Example:
             >>> bishop = Bishop(color='white', position=(0, 1))
             >>> print(bishop.get_valid_move())
-            ... [(1, 2), (2, 3)]
+            ... [(1, 2), (2, 3), ...]
         """
         x, y = self.position
         moves = []
@@ -194,11 +194,97 @@ class Bishop(Piece):
             moves.append((x - i, y + i))
             moves.append((x - i, y - i))
         return [(i, j) for i, j in moves if 0 <= i < 8 and 0 <= j < 8]
-        
-if __name__ == '__main__': 
-    piece = Knight(color='WHITE', position=(0, 1))
     
-    print(piece.get_color)  # Output: 'white'
-    print(piece.get_piece_type)  # Output: 'knight'
-    print(piece.get_position)  # Output: (0, 1)
-    print(piece.get_valid_move())  # Output: [(2, 2), (2, 0), (1, 3)]
+class Queen(Piece): 
+    def __init__(self, color: str, position: Tuple[int, int]):
+        super().__init__(color=color, piece_type='QUEEN', position=position)
+
+    def get_valid_move(self) -> List[Tuple[int, int]]:
+        """
+        Get valid moves for the queen piece.
+
+        Returns:
+            List[Tuple[int, int]]: A list of valid moves for the queen.
+            
+        Example:
+            >>> queen = Queen(color='white', position=(0, 1))
+            >>> print(queen.get_valid_move())
+            ... [(1, 2), (2, 3), ...]
+        """
+        x, y = self.position
+        moves = []
+        for i in range(1, 8):
+            moves.append((x + i, y))
+            moves.append((x - i, y))
+            moves.append((x, y + i))
+            moves.append((x, y - i))
+            moves.append((x + i, y + i))
+            moves.append((x + i, y - i))
+            moves.append((x - i, y + i))
+            moves.append((x - i, y - i))
+        return [(i, j) for i, j in moves if 0 <= i < 8 and 0 <= j < 8]
+    
+class King(Piece):
+    def __init__(self, color: str, position: Tuple[int, int]):
+        super().__init__(color=color, piece_type='KING', position=position)
+        
+    def get_valid_move(self) -> List[Tuple[int, int]]:
+        """
+        Get valid moves for the king piece.
+
+        Returns:
+            List[Tuple[int, int]]: A list of valid moves for the king.
+            
+        Example:
+            >>> king = King(color='white', position=(0, 1))
+            >>> print(king.get_valid_move())
+            ... [(0, 2), (1, 2), ...]
+        """
+        x, y = self.position
+        moves = [(x + dx, y + dy) for dx in [-1, 0, 1] for dy in [-1, 0, 1] if (dx != 0 or dy != 0)]
+        return [(i, j) for i, j in moves if 0 <= i < 8 and 0 <= j < 8]
+    
+class Pawn(Piece):
+    def __init__(self, color: str, position: Tuple[int, int]):
+        super().__init__(color=color, piece_type='PAWN', position=position)
+        
+    def get_valid_move(self) -> List[Tuple[int, int]]:
+        """
+        Get valid moves for the pawn piece.
+
+        Returns:
+            List[Tuple[int, int]]: A list of valid moves for the pawn.
+            
+        Example:
+            >>> pawn = Pawn(color='white', position=(1, 1))
+            >>> print(pawn.get_valid_move())
+            ... [(2, 1), ...]
+        """
+        x, y = self.position
+        direction = 1 if self.color == 'white' else -1
+        return [(x + direction, y)]
+    
+class Rook(Piece):
+    def __init__(self, color: str, position: Tuple[int, int]):
+        super().__init__(color=color, piece_type='ROOK', position=position)
+        
+    def get_valid_move(self) -> List[Tuple[int, int]]:
+        """
+        Get valid moves for the rook piece.
+
+        Returns:
+            List[Tuple[int, int]]: A list of valid moves for the rook.
+            
+        Example:
+            >>> rook = Rook(color='white', position=(0, 1))
+            >>> print(rook.get_valid_move())
+            ... [(0, 2), (1, 1), ...]
+        """
+        x, y = self.position
+        moves = []
+        for i in range(8):
+            if i != x:
+                moves.append((i, y))
+            if i != y:
+                moves.append((x, i))
+        return [(i, j) for i, j in moves if 0 <= i < 8 and 0 <= j < 8]
