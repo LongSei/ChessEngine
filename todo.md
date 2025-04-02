@@ -33,7 +33,7 @@
 - [ ] Create a suite of unit tests for all components
 
 ## Move Generation
-- [ ] Implement basic piece movement rules for all pieces
+- [X] Implement basic piece movement rules for all pieces
 - [ ] Implement special moves (castling, en passant)
 - [ ] Implement pawn promotion
 - [ ] Implement move validation (checking if moves are legal)
