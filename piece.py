@@ -12,7 +12,7 @@ class Piece(ABC):
 
     @classmethod
     def load_config(cls):
-        """Load configuration từ YAML file."""
+        """Configuration loading method."""
         try:
             with open(cls.CONFIG_PATH, 'r') as file:
                 config_data = yaml.safe_load(file)
@@ -33,7 +33,7 @@ class Piece(ABC):
             raise ValueError(f"Error parsing YAML file: {e}")
 
     def __init_subclass__(cls, **kwargs):
-        """Load config khi lớp con được khởi tạo."""
+        """Load configuration for subclasses."""
         super().__init_subclass__(**kwargs)
         cls.CONFIG = cls.load_config()
         cls.COLOR_MAP = cls.CONFIG['PIECE_COLOR']
@@ -168,6 +168,31 @@ class Knight(Piece):
         x, y = self.position
         moves = [(x + 2, y + 1), (x + 2, y - 1), (x - 2, y + 1), (x - 2, y - 1),
                  (x + 1, y + 2), (x + 1, y - 2), (x - 1, y + 2), (x - 1, y - 2)]
+        return [(i, j) for i, j in moves if 0 <= i < 8 and 0 <= j < 8]
+    
+class Bishop(Piece): 
+    def __init__(self, color: str, position: Tuple[int, int]):
+        super().__init__(color=color, piece_type='BISHOP', position=position)
+
+    def get_valid_move(self) -> List[Tuple[int, int]]:
+        """
+        Get valid moves for the bishop piece.
+
+        Returns:
+            List[Tuple[int, int]]: A list of valid moves for the bishop.
+            
+        Example:
+            >>> bishop = Bishop(color='white', position=(0, 1))
+            >>> print(bishop.get_valid_move())
+            ... [(1, 2), (2, 3)]
+        """
+        x, y = self.position
+        moves = []
+        for i in range(1, 8):
+            moves.append((x + i, y + i))
+            moves.append((x + i, y - i))
+            moves.append((x - i, y + i))
+            moves.append((x - i, y - i))
         return [(i, j) for i, j in moves if 0 <= i < 8 and 0 <= j < 8]
         
 if __name__ == '__main__': 
