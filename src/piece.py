@@ -8,7 +8,7 @@ class Piece(ABC):
     """
     Abstract base class for chess pieces.
     """
-    CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'config', 'config.yaml')
+    CONFIG_PATH = './config/config.yaml'
 
     @classmethod
     def load_config(cls):
@@ -21,7 +21,7 @@ class Piece(ABC):
                 if not piece_config_path:
                     raise ValueError("Missing PIECE_CONFIGURATION in config.yaml")
 
-                piece_config_file = os.path.join(os.path.dirname(__file__), piece_config_path)
+                piece_config_file = piece_config_path
 
                 with open(piece_config_file, 'r') as pc_file:
                     piece_config = yaml.safe_load(pc_file)
@@ -47,13 +47,13 @@ class Piece(ABC):
         Initialize a piece with type and color.
         
         Args:
-            color (str): Color of the piece ('white' or 'black').
+            color (str): Color of the piece ('WHITE' or 'black').
             piece_type (str): Type of the piece (e.g., 'knight', 'bishop').
             position (Tuple[int, int]): Position of the piece on the board.
             
         Example:
-            >>> piece = Piece(color='white', piece_type='knight', position=(0, 1))
-            >>> assert piece.get_color == 'white'
+            >>> piece = Piece(color='WHITE', piece_type='knight', position=(0, 1))
+            >>> assert piece.get_color == 'WHITE'
             ... True
             >>> assert piece.get_piece_type == 'knight'
             ... True
@@ -82,8 +82,8 @@ class Piece(ABC):
             bool: True if both pieces are equal, False otherwise.
             
         Example: 
-            >>> piece1 = Piece(color='white', piece_type='knight')
-            >>> piece2 = Piece(color='white', piece_type='knight')
+            >>> piece1 = Piece(color='WHITE', piece_type='knight')
+            >>> piece2 = Piece(color='WHITE', piece_type='knight')
             >>> piece3 = Piece(color='black', piece_type='bishop')
             >>> assert piece1 == piece2  
             ... True
@@ -124,7 +124,7 @@ class Piece(ABC):
             new_position (Tuple[int, int]): New position to check.
             
         Example:
-            >>> piece = Piece(color='white', piece_type='knight', position=(0, 1))
+            >>> piece = Piece(color='WHITE', piece_type='knight', position=(0, 1))
             >>> assert piece.is_valid_move((2, 2)) == True
             ... True
         """
@@ -139,7 +139,7 @@ class Piece(ABC):
             new_position (Tuple[int, int]): New position to move the piece to.
             
         Example:
-            >>> piece = Piece(color='white', piece_type='knight', position=(0, 1))
+            >>> piece = Piece(color='WHITE', piece_type='knight', position=(0, 1))
             >>> piece.move_to((2, 2))
             >>> assert piece.get_position == (2, 2)
             ... True
@@ -161,7 +161,7 @@ class Knight(Piece):
             List[Tuple[int, int]]: A list of valid moves for the knight.
             
         Example:
-            >>> knight = Knight(color='white', position=(0, 1))
+            >>> knight = Knight(color='WHITE', position=(0, 1))
             >>> print(knight.get_valid_move())
             ... [(2, 2), (2, 0), ...]
         """
@@ -182,7 +182,7 @@ class Bishop(Piece):
             List[Tuple[int, int]]: A list of valid moves for the bishop.
             
         Example:
-            >>> bishop = Bishop(color='white', position=(0, 1))
+            >>> bishop = Bishop(color='WHITE', position=(0, 1))
             >>> print(bishop.get_valid_move())
             ... [(1, 2), (2, 3), ...]
         """
@@ -207,7 +207,7 @@ class Queen(Piece):
             List[Tuple[int, int]]: A list of valid moves for the queen.
             
         Example:
-            >>> queen = Queen(color='white', position=(0, 1))
+            >>> queen = Queen(color='WHITE', position=(0, 1))
             >>> print(queen.get_valid_move())
             ... [(1, 2), (2, 3), ...]
         """
@@ -236,7 +236,7 @@ class King(Piece):
             List[Tuple[int, int]]: A list of valid moves for the king.
             
         Example:
-            >>> king = King(color='white', position=(0, 1))
+            >>> king = King(color='WHITE', position=(0, 1))
             >>> print(king.get_valid_move())
             ... [(0, 2), (1, 2), ...]
         """
@@ -256,12 +256,12 @@ class Pawn(Piece):
             List[Tuple[int, int]]: A list of valid moves for the pawn.
             
         Example:
-            >>> pawn = Pawn(color='white', position=(1, 1))
+            >>> pawn = Pawn(color='WHITE', position=(1, 1))
             >>> print(pawn.get_valid_move())
             ... [(2, 1), ...]
         """
         x, y = self.position
-        direction = 1 if self.color == 'white' else -1
+        direction = 1 if self.color == 1 else -1
         return [(x + direction, y)]
     
 class Rook(Piece):
@@ -276,7 +276,7 @@ class Rook(Piece):
             List[Tuple[int, int]]: A list of valid moves for the rook.
             
         Example:
-            >>> rook = Rook(color='white', position=(0, 1))
+            >>> rook = Rook(color='WHITE', position=(0, 1))
             >>> print(rook.get_valid_move())
             ... [(0, 2), (1, 1), ...]
         """
