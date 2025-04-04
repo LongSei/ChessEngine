@@ -70,6 +70,17 @@ namespace BitBoardEngine
         BitBoard getAllOccupancy() const;
         enumPieceType getPieceType(BitBoard square) const;
     };
+    
+    struct GameState
+    {
+        bool isWhiteTurn;
+        BitBoard enPassantSquare;
+        uint8_t castlingRights; //4 bit KQkq
+        int halfMoveClock;
+
+    };
+
+    
 
     /**
      * @brief Initialize the attacks table and other necessary stuff
@@ -81,7 +92,7 @@ namespace BitBoardEngine
     void initKingAttacksTable();
     void initPawnAttacksTable();
 
-    
+
 }
 
 #endif
