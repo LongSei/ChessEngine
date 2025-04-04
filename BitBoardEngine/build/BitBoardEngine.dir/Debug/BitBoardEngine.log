@@ -1,0 +1,4 @@
+﻿  Building Custom Rule D:/Repos/ChessEngine/BitBoardEngine/CMakeLists.txt
+  main.cpp
+     Creating library D:/Repos/ChessEngine/BitBoardEngine/build/Debug/BitBoardEngine.lib and object D:/Repos/ChessEngine/BitBoardEngine/build/Debug/BitBoardEngine.exp
+  BitBoardEngine.vcxproj -> D:\Repos\ChessEngine\BitBoardEngine\build\Debug\BitBoardEngine.cp312-win_amd64.pyd

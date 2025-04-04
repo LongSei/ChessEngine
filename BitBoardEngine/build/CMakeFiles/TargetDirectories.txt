@@ -1,0 +1,4 @@
+D:/Repos/ChessEngine/BitBoardEngine/build/CMakeFiles/BitBoardEngine.dir
+D:/Repos/ChessEngine/BitBoardEngine/build/CMakeFiles/ALL_BUILD.dir
+D:/Repos/ChessEngine/BitBoardEngine/build/CMakeFiles/ZERO_CHECK.dir
+D:/Repos/ChessEngine/BitBoardEngine/build/pybind11/CMakeFiles/ALL_BUILD.dir
