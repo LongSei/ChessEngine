@@ -2,7 +2,9 @@
 
 ## Board Representation
 - [ ] Define chessboard representation (8x8 grid or bitboards)
-- [ ] Create data structures for pieces and their positions
+  - [X] Normal 8*8
+  - [ ] Bitboard 
+- [X] Create data structures for pieces and their positions
 - [ ] Implement functions to initialize the board with standard chess setup
 - [ ] Create functions to display the board state
 
@@ -31,7 +33,7 @@
 - [ ] Create a suite of unit tests for all components
 
 ## Move Generation
-- [ ] Implement basic piece movement rules for all pieces
+- [X] Implement basic piece movement rules for all pieces
 - [ ] Implement special moves (castling, en passant)
 - [ ] Implement pawn promotion
 - [ ] Implement move validation (checking if moves are legal)
