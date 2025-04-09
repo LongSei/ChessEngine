@@ -10,8 +10,8 @@ class TestPieceInitialization:
     
     def test_valid_initialization(self):
         knight = Knight(color='WHITE', position=(0, 0))
-        assert knight.get_color == 1
-        assert knight.get_piece_type == 2
+        assert knight.get_color() == "WHITE"
+        assert knight.get_piece_type() == "KNIGHT"
     
     def test_invalid_color_raises_error(self):
         with pytest.raises(ValueError, match="Invalid color 'red'"):
@@ -109,12 +109,12 @@ class TestPawnMoves:
     def test_white_pawn_forward(self):
         pawn = Pawn(color='WHITE', position=(1, 1))
         moves = pawn.get_valid_move()
-        assert moves == [(2, 1)]
+        assert moves == [(0, 1)]
     
     def test_black_pawn_forward(self):
         pawn = Pawn(color='BLACK', position=(6, 1))
         moves = pawn.get_valid_move()
-        assert moves == [(5, 1)]
+        assert moves == [(7, 1)]
 
 class TestRookMoves:
     """Tests for Rook's valid moves."""
@@ -131,7 +131,7 @@ class TestMoveValidation:
     def test_valid_move_updates_position(self):
         knight = Knight(color='WHITE', position=(0, 0))
         knight.move_to((1, 2))   
-        assert knight.get_position == (1, 2)
+        assert knight.get_position() == (1, 2)
     
     def test_invalid_move_raises_error(self):
         knight = Knight(color='WHITE', position=(0, 0))

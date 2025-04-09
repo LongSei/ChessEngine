@@ -8,6 +8,10 @@ class Board:
     def __init__(self):
         self.board_size = 8
         self.board = {}
+        self.captured_pieces = {
+            'WHITE': [],
+            'BLACK': []
+        }
         self.setup_board()
       
     def setup_board(self) -> None:
