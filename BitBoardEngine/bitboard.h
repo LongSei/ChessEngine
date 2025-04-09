@@ -2,6 +2,9 @@
 #ifndef BITBOARD_H
 #define BITBOARD_H
 #include "pybind11/pybind11.h"
+
+namespace py = pybind11;
+
 using BitBoard = uint64_t;
 
 /**
@@ -11,7 +14,6 @@ using BitBoard = uint64_t;
  * This module implements a chess engine using bitboard representation.
  * All Python API bindings use snake_case naming convention.
  */
-
 namespace BitBoardEngine
 {
 
@@ -19,7 +21,7 @@ namespace BitBoardEngine
      * @enum enumRank
      * @brief Bitmask representation of chess ranks
      */
-    enum enumRank
+    enum class Rank : BitBoard
     {
         eRANK_1 = 0xFFULL << 0,
         eRANK_2 = 0xFFULL << 8,
@@ -35,7 +37,7 @@ namespace BitBoardEngine
      * @enum enumFile
      * @brief Bitmask representation of chess files
      */
-    enum enumFile
+    enum class File : BitBoard
     {
         eFILE_A = 0x0101010101010101,
         eFILE_B = 0x0202020202020202,
@@ -50,21 +52,21 @@ namespace BitBoardEngine
     // Use enum classes for type safety
     enum class PieceColor : uint8_t
     {
-        ePC_WHITE,
-        ePC_BLACK
+        ePC_WHITE = 0,
+        ePC_BLACK = 1
     };
     enum class PieceType : uint8_t
     {
-        ePT_PAWN,
-        ePT_KNIGHT,
-        ePT_BISHOP,
-        ePT_ROOK,
-        ePT_QUEEN,
-        ePT_KING,
-        ePT_NONE
+        ePT_PAWN = 0,
+        ePT_KNIGHT = 1 << 0,
+        ePT_BISHOP = 1 << 1,
+        ePT_ROOK = 1 << 2,
+        ePT_QUEEN = 1 << 3,
+        ePT_KING = 1 << 4,
+        ePT_NONE = 1 << 5
     };
 
-    enum enumMoveType
+    enum MoveType
     {
         eMT_QUIET = 0b0000,           // Regular move
         eMT_CAPTURE = 0b0001,         // Capture
@@ -79,26 +81,24 @@ namespace BitBoardEngine
      * @class Move
      * @brief Compact move representation using 32-bit storage
      *
-     * Encoding format:
-     * - Bits 0-5:   Origin square (0-63)
-     * - Bits 6-11:  Destination square (0-63)
-     * - Bits 12-15: Move flags (enumMoveType)
-     * - Bits 16-17: Promotion piece type (if applicable)
      */
     class Move
     {
     private:
-        uint16_t data;
+        uint8_t from;
+        uint8_t to;
+        MoveType flags;
+        PieceType promotion;
 
     public:
         /**
          * @brief Construct a new Move object
          * @param from Square index (0-63)
          * @param to Square index (0-63)
-         * @param flags Move type flags (enumMoveType)
+         * @param flags Move type flags (MoveType)
          * @param promotion Promotion piece type (if applicable)
          */
-        Move(uint8_t from, uint8_t to, uint8_t flags, uint8_t promotion = 0);
+        Move(uint8_t from, uint8_t to, MoveType flags, PieceType promotion = PieceType::ePT_NONE);
 
         /// @brief Get origin square index
         uint8_t from() const;
@@ -106,19 +106,10 @@ namespace BitBoardEngine
         uint8_t to() const;
         /// @brief Get flags
         uint8_t flags() const;
+        /// @brief Get promoted PieceType
+        PieceType promotion() const;
     };
-    bool is_move_legal(const Move &move) const;
-    bool is_pseudo_legal(const Move &move) const;
 
-    /**
-     * @brief Scored Move for alpha-beta search
-     *
-     */
-    struct ScoredMove
-    {
-        Move move;
-        int score; // Heuristic score for sorting
-    };
     /**
      * @struct ChessBoard
      * @brief Pure board state representation
@@ -131,68 +122,17 @@ namespace BitBoardEngine
         BitBoard pieces[2][6];
 
         ChessBoard();
-        BitBoard getPieceBitBoard(enumPieceColor color, enumPieceType type) const;
+        BitBoard getPieceBitBoard(PieceColor color, PieceType type) const;
         BitBoard getWhiteOccupancy() const;
         BitBoard getBlackOccupancy() const;
         BitBoard getAllOccupancy() const;
-        enumPieceType getPieceType(BitBoard square) const; // ChessBoard
-        void set_piece(enumPieceColor color, enumPieceType type, BitBoard squares);
-        void clear_piece(enumPieceColor color, enumPieceType type, BitBoard squares);
-        void reset_to_initial_position(); // ChessBoard
-        std::string to_unicode() const;   // Visual board representation
-        void print_debug() const;         // ASCII KQkq white/black output
-    };
-
-    struct StateDelta
-    {
-        Move move;
-        BitBoard captured_piece;
-        uint8_t prev_castling;
-        BitBoard prev_en_passant;
-        int prev_halfmove;
-    };
-
-    /**
-     * @struct GameState
-     * @brief Complete game state representation
-     *
-     * Contains board position and game rules metadata.
-     */
-    struct GameState
-    {
-        std::vector<StateDelta> undo_stack;
-        ChessBoard board;           ///< Current board position
-        bool is_white_turn;         ///< Side to move
-        BitBoard en_passant_square; ///< En passant target square
-        uint8_t castling_rights;    ///< Castling availability (4 bits: KQkq)
-        int half_move_clock;        ///< 50-move rule counter
-        int full_move_number;       ///< Game move counter
-
-        /// @brief Generate all legal moves for current position
-        std::vector<Move> generate_legal_moves();
-
-        /**
-         * @brief Check if the current player is in check
-         *
-         * @param state
-         * @return true
-         * @return false
-         */
-        bool isInCheck();
-
-        void makeMove(const Move &move);
-
-        /**
-         * @brief for optimize memory in searching
-         *
-         * @param move move to undo
-         */
-        void unmakeMove(const Move &move); // GameState
-        bool isCheckmate() const;
-        bool isStalemate() const;
-        bool isDraw() const; // 50-move rule/threefold repetition
-        std::string toFen() const;
-        void fromFen(const std::string &fen);
+        std::vector<Move> generatePseudoLegalMoves() const;
+        /// @brief Make move that change board representation of this instance
+        void makeMoveInplace(const Move &move);
+        /// @brief Return a board after the move from this instance
+        ChessBoard makeMove(const Move &move);
+        /// @brief Reset board state to default position
+        void reset();
     };
 
     /**
@@ -219,7 +159,7 @@ namespace BitBoardEngine
     BitBoard queenAttacks[64];
     BitBoard pawnAttacks[64][2]; // square color
     void initSliderAttacks();
-    void initNonSliderAttacks(); 
+    void initNonSliderAttacks();
 
     // Just built-in popcount
     int count_bits(BitBoard b);
