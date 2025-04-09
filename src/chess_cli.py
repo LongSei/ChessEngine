@@ -32,13 +32,6 @@ def print_board(board_obj: Board) -> None:
 
 def parse_move(move_str: str):
     tokens = move_str.strip().split()
-    if len(tokens) != 4:
-        raise ValueError("Invalid move format. Please enter: x1 y1 x2 y2")
-    return tuple(map(int, tokens))
-
-
-def parse_move(move_str: str):
-    tokens = move_str.strip().split()
     from_y = ord(tokens[0][:1]) - ord('a');  from_x = int(tokens[0][1:2]) - 1
     to_y   = ord(tokens[1][:1]) - ord('a');  to_x   = int(tokens[1][1:2]) - 1
     return from_x, from_y, to_x, to_y
