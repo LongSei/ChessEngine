@@ -66,8 +66,8 @@ class Piece(ABC):
         if piece_type not in self.PIECE_TYPE_MAP:
             raise ValueError(f"Invalid piece type '{piece_type}', must be one of {list(self.PIECE_TYPE_MAP.keys())}")
 
-        self.color = self.COLOR_MAP[color]
-        self.piece_type = self.PIECE_TYPE_MAP[piece_type]
+        self.color = color
+        self.piece_type = piece_type
         self.position = position
     
     def __eq__(self, other):
@@ -94,15 +94,12 @@ class Piece(ABC):
             raise ValueError("Cannot compare Piece with non-Piece object")
         return self.piece_type == other.piece_type and self.color == other.color
     
-    @property
     def get_piece_type(self) -> str: 
         return self.piece_type
     
-    @property
     def get_position(self) -> Tuple[int, int]: 
         return self.position
     
-    @property
     def get_color(self) -> str: 
         return self.color
     
@@ -261,7 +258,7 @@ class Pawn(Piece):
             ... [(2, 1), ...]
         """
         x, y = self.position
-        direction = 1 if self.color == 1 else -1
+        direction = 1 if self.color == 'BLACK' else -1
         return [(x + direction, y)]
     
 class Rook(Piece):

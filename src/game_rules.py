@@ -171,7 +171,7 @@ class ChessGame:
                 if piece:
                     # Sử dụng ký hiệu chữ cái đầu của kiểu quân, 
                     # bạn có thể mở rộng để phân biệt màu sắc nếu cần.
-                    row_str += piece.get_piece_type[0] + " "
+                    row_str += piece.get_piece_type()[0] + " "
                 else:
                     row_str += ". "
             print(row_str)
