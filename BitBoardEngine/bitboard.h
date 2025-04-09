@@ -101,13 +101,13 @@ namespace BitBoardEngine
         Move(uint8_t from, uint8_t to, MoveType flags, PieceType promotion = PieceType::ePT_NONE);
 
         /// @brief Get origin square index
-        uint8_t from() const;
+        uint8_t getFrom() const;
         /// @brief Get destination square index
-        uint8_t to() const;
+        uint8_t getTo() const;
         /// @brief Get flags
-        uint8_t flags() const;
+        MoveType getFlags() const;
         /// @brief Get promoted PieceType
-        PieceType promotion() const;
+        PieceType getPromotion() const;
     };
 
     /**
