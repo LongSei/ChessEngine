@@ -45,7 +45,7 @@ def main():
     
     while True:
         print_board(board_obj)
-        move_input = input(f"Lượt {current_turn}: Enter move or 'q' to quit: ")
+        move_input = input(f"Turn {current_turn}: Enter move or 'q' to quit: ")
         
         if move_input.lower() == 'q':
             print("Quit!")
@@ -68,7 +68,6 @@ def main():
             print("There are no pieces in the selected position!")
             continue
         
-        # Sử dụng mapping để chuyển đổi màu từ số sang chuỗi để so sánh với current_turn.
         if color_str_map.get(piece.get_color, '?') != current_turn:
             print(f"The piece at ({from_x}, {from_y}) is not in {current_turn}.")
             continue
