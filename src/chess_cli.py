@@ -1,9 +1,14 @@
 from board import Board
+from game_rules import GameRules
 
 class ChessCLI:
     def __init__(self):
+        """
+        Initialize the chess CLI with a board and game rules.
+        """
+
         self.board = Board()
-        self.current_turn = 'WHITE'
+        self.rules = GameRules()
         self.symbol_map = {
             'PAWN': 'P',
             'KNIGHT': 'N',
@@ -14,6 +19,15 @@ class ChessCLI:
         }
 
     def print_board(self) -> None:
+        """
+        Display the current state of the chess board in a human-readable format.
+
+        Each cell shows the piece using a symbol:
+            - 'w' prefix for WHITE pieces
+            - 'b' prefix for BLACK pieces
+            - '.' for empty cells
+        """
+
         print("  | a  | b  | c  | d  | e  | f  | g  | h  |")
         print("--|----|----|----|----|----|----|----|----|")
         for i in range(self.board.board_size):
@@ -33,59 +47,63 @@ class ChessCLI:
             print(row)
         print("\n")
 
-    def parse_move(self, move_str: str):
-        move_str = move_str.strip()
-        move_byte = move_str.encode()
-        return (
-            move_byte[1] - 49,  # from_x 
-            move_byte[0] - 97,  # from_y 
-            move_byte[4] - 49,  # to_x
-            move_byte[3] - 97,  # to_y
-        )
+    def parse_move(self, position: str):
+        """
+        Parses the move position of a piece.
 
+        Args:
+            move_str (str): Position in chess notation, e.g., 'a2'.
+
+        Returns:
+            tuple: Coordinates on the board (row, col).
+        Raises:
+            ValueError: If move format is invalid
+
+        Example:
+        >>> parse_move('a2')
+        (1, 0)
+        """
+
+        pos = position.strip()
+        if len(pos) == 2 and pos[0].isalpha() and pos[1].isdigit():
+            return tuple((int(pos[1]) - 1, ord(pos[0]) - ord('a')))
+        else: 
+            raise ValueError
+        
     def run(self):
+        """
+        Main game loop.
+
+        Repeatedly prompts the player for moves and applies them to the board using game rules.
+        Handles invalid input and move errors gracefully.
+        """
+
         while True:
             self.print_board()
-            move_input = input(f"Turn {self.current_turn}: Enter move or 'q' to quit: ")
+            print(f"Turn {self.rules.turn}")
+            from_input = input(f"Enter FROM posion or 'q' to quit: ")
+            to_input = input(f"Enter TO position or 'q' to quit: ")
 
-            if move_input.lower() == 'q':
+            if from_input.lower() == 'q' or to_input.lower == 'q':
                 print("Quit!")
                 break
 
             try:
-                from_x, from_y, to_x, to_y = self.parse_move(move_input)
+                from_pos = self.parse_move(from_input)
+                to_pos = self.parse_move(to_input)
             except (ValueError, IndexError):
-                print("Invalid move format. Please try again.")
+                print("Invalid move format. Please try again.\n")
                 continue
 
             try:
-                piece = self.board.get_piece((from_x, from_y))
+                self.rules.move_piece(self.board, from_pos, to_pos)
             except ValueError as e:
-                print(e)
+                print(f"Error: {e}")
                 continue
-
-            if piece is None:
-                print("There are no pieces in the selected position!")
-                continue
-
-            if piece.get_color() != self.current_turn:
-                print(f"The piece at ({from_x}, {from_y}) is not in {self.current_turn}.")
-                continue
-
-            valid_moves = piece.get_valid_move()
-            if (to_x, to_y) not in valid_moves:
-                print("Invalid move!!!")
-                continue
-
-            try:
-                self.board.set_piece((to_x, to_y), piece)
-                self.board.board[(from_x, from_y)] = None
-            except ValueError as e:
-                print(e)
+            except Exception as e:
+                print(f"Unexpected error: {e}")
                 continue
             
-            self.current_turn = 'BLACK' if self.current_turn == 'WHITE' else 'WHITE'
-
 if __name__ == '__main__':
     game = ChessCLI()
     game.run()
