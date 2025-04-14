@@ -3,7 +3,7 @@ import numpy as np
 import torch
 
 model = AutoEncoder()
-state = torch.load('./checkpoints/autoencoder/lr_5_decay_95/ae_100.pth.tar', map_location=lambda storage, loc: storage)
+state = torch.load('./checkpoints/autoencoder/best_model.pth.tar', map_location=lambda storage, loc: storage)
 model.load_state_dict(state['state_dict'])
 games = np.load('./../../../data/bitboards.npy')
 
