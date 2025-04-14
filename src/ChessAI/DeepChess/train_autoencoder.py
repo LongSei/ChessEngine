@@ -98,12 +98,37 @@ if resume:
     optimizer.load_state_dict(state['optimizer'])
     start_epoch = state['epoch']
 
+# ------------------- Early stopping config ---------------------
+best_loss = float('inf')
+patience = 5
+counter = 0
+early_stop = False
+
 for epoch in tqdm(range(start_epoch, args.epochs + 1), desc="Epochs", position=0):
     train_loss = train(epoch)
     test_loss, test_mse, diff = test()
-    save_model(epoch)
 
     tqdm.write(f"[Epoch {epoch}] Train Loss: {train_loss:.4f} | Test Loss: {test_loss:.4f} | MSE: {test_mse:.4f} | Diff: {diff:.4f}")
+
+    if test_loss < best_loss:
+        best_loss = test_loss
+        counter = 0
+        # Save best model
+        os.makedirs('./checkpoints/autoencoder', exist_ok=True)
+        torch.save({
+            'state_dict': model.state_dict(),
+            'optimizer': optimizer.state_dict(),
+            'epoch': epoch
+        }, './checkpoints/autoencoder/best_model.pth.tar')
+    else:
+        counter += 1
+        if counter >= patience:
+            tqdm.write(f"Early stopping triggered at epoch {epoch}. Best test loss: {best_loss:.4f}")
+            early_stop = True
+            break
+
+    # Save current epoch model
+    save_model(epoch)
 
     # Update LR
     for param_group in optimizer.param_groups:
