@@ -1,11 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# # Q-Network implementation
-
-# In[ ]:
-
-
 import chess
 import torch
 import torch.nn as nn
@@ -14,11 +6,6 @@ import numpy as np
 import random
 from collections import deque
 from torch.utils.tensorboard import SummaryWriter
-
-
-# In[2]:
-
-
 # Config
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {DEVICE}")
@@ -32,12 +19,6 @@ SYNC_INTERVAL = 50
 EPSILON_START = 1.0
 EPSILON_END = 0.1
 EPSILON_DECAY = 0.9995
-
-
-# ## Encode the board for Q-Net input
-
-# In[3]:
-
 
 def encode_board(board):
     # 3D piece encoding (8x8x14)
@@ -73,11 +54,6 @@ def encode_board(board):
     ])
     
     return encoded
-
-
-# ## Q-Network implementation
-
-# In[4]:
 
 
 class ChessQNetwork(nn.Module):
@@ -119,11 +95,7 @@ class ChessQNetwork(nn.Module):
         combined = torch.cat([conv_out, other_features], dim=1)
         
         return self.fc(combined)
-
-
-# In[5]:
-
-
+    
 class PrioritizedReplayBuffer:
     def __init__(self, capacity):
         self.buffer = deque(maxlen=capacity)
@@ -164,9 +136,64 @@ class PrioritizedReplayBuffer:
             self.priorities[idx] = (priority + 1e-5) ** self.alpha
             self.max_priority = max(self.max_priority, priority)
 
+def augment_data(state, move):
+    # Random rotation (0-3) and flip
+    rotation = random.randint(0, 3)
+    flip = random.choice([True, False])
+    
+    # Rotate board state
+    piece_data = state[:8*8*14].reshape(8, 8, 14)
+    piece_data = np.rot90(piece_data, rotation)
+    if flip:
+        piece_data = np.fliplr(piece_data)
+    rotated_state = np.concatenate([piece_data.flatten(), state[8*8*14:]])
+    
+    # Rotate move coordinates
+    from_sq = move.from_square
+    to_sq = move.to_square
+    
+    for _ in range(rotation):
+        from_sq = chess.square_mirror(from_sq)
+        to_sq = chess.square_mirror(to_sq)
+    
+    if flip:
+        from_sq = chess.square_mirror(from_sq)
+        to_sq = chess.square_mirror(to_sq)
+    
+    return rotated_state, chess.Move(from_sq, to_sq)
 
-# In[6]:
+def get_best_move(board, model):
+    legal_moves = list(board.legal_moves)
+    if not legal_moves:
+        return None
+    
+    # Chuẩn bị batch input đúng định dạng
+    state = encode_board(board)
+    state_repeated = np.tile(state, (len(legal_moves), 1))
+    
+    # Thêm action features
+    action_features = np.array([[m.from_square/63, m.to_square/63] for m in legal_moves])
+    network_input = np.concatenate([state_repeated, action_features], axis=1)
+    
+    # Chuyển sang tensor
+    input_tensor = torch.FloatTensor(network_input).to(DEVICE)
+    
+    with torch.no_grad():
+        q_values = model(input_tensor).cpu().numpy().flatten()
+    
+    return legal_moves[np.argmax(q_values)]
 
+
+def evaluate_model(model, num_games=10):
+    wins = 0
+    for _ in range(num_games):
+        board = chess.Board()
+        while not board.is_game_over():
+            move = get_best_move(board, model) if board.turn else random.choice(list(board.legal_moves))
+            board.push(move)
+        if board.result() == "1-0":
+            wins += 1
+    return wins / num_games
 
 def generate_self_play_games(model, num_games=10):
     buffer = []
@@ -203,80 +230,6 @@ def generate_self_play_games(model, num_games=10):
         
     return buffer
 
-
-# In[7]:
-
-
-def augment_data(state, move):
-    # Random rotation (0-3) and flip
-    rotation = random.randint(0, 3)
-    flip = random.choice([True, False])
-    
-    # Rotate board state
-    piece_data = state[:8*8*14].reshape(8, 8, 14)
-    piece_data = np.rot90(piece_data, rotation)
-    if flip:
-        piece_data = np.fliplr(piece_data)
-    rotated_state = np.concatenate([piece_data.flatten(), state[8*8*14:]])
-    
-    # Rotate move coordinates
-    from_sq = move.from_square
-    to_sq = move.to_square
-    
-    for _ in range(rotation):
-        from_sq = chess.square_mirror(from_sq)
-        to_sq = chess.square_mirror(to_sq)
-    
-    if flip:
-        from_sq = chess.square_mirror(from_sq)
-        to_sq = chess.square_mirror(to_sq)
-    
-    return rotated_state, chess.Move(from_sq, to_sq)
-
-
-# In[8]:
-
-
-def get_best_move(board, model):
-    legal_moves = list(board.legal_moves)
-    if not legal_moves:
-        return None
-    
-    # Chuẩn bị batch input đúng định dạng
-    state = encode_board(board)
-    state_repeated = np.tile(state, (len(legal_moves), 1))
-    
-    # Thêm action features
-    action_features = np.array([[m.from_square/63, m.to_square/63] for m in legal_moves])
-    network_input = np.concatenate([state_repeated, action_features], axis=1)
-    
-    # Chuyển sang tensor
-    input_tensor = torch.FloatTensor(network_input).to(DEVICE)
-    
-    with torch.no_grad():
-        q_values = model(input_tensor).cpu().numpy().flatten()
-    
-    return legal_moves[np.argmax(q_values)]
-
-
-# In[10]:
-
-
-def evaluate_model(model, num_games=10):
-    wins = 0
-    for _ in range(num_games):
-        board = chess.Board()
-        while not board.is_game_over():
-            move = get_best_move(board, model) if board.turn else random.choice(list(board.legal_moves))
-            board.push(move)
-        if board.result() == "1-0":
-            wins += 1
-    return wins / num_games
-
-
-# In[11]:
-
-
 def train():
     # Initialize networks
     q_net = ChessQNetwork().to(DEVICE)
@@ -291,7 +244,7 @@ def train():
     epsilon = EPSILON_START
     step_counter = 0
 
-    for episode in range(1000):  # Thêm các dòng kiểm tra này vào đầu training loop
+    for episode in range(1000): 
         sample_input = torch.randn(1, 8 * 8 * 14 + 7 + 2).to(
             DEVICE
         )  # 903 (state) + 2 (action) = 905
@@ -299,7 +252,7 @@ def train():
         output = q_net(sample_input)
         print("Output shape:", output.shape)
         # Generate self-play games
-        games = generate_self_play_games(q_net, num_games=5)
+        games = generate_self_play_games(q_net, num_games=30)
         for game in games:
             replay_buffer.add(game)
 
@@ -380,4 +333,3 @@ def train():
 
 if __name__ == "__main__":
     train()
-
