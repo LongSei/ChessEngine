@@ -77,7 +77,6 @@ class SiameseNetwork(nn.Module):
             comparator.append(nn.LeakyReLU())
 
         comparator.append(nn.Linear(comparator_layers[-1], output_dim))
-        comparator.append(nn.Sigmoid())
         self.comparator = nn.Sequential(*comparator)
         
     def forward(self, x1, x2): 
@@ -85,7 +84,7 @@ class SiameseNetwork(nn.Module):
         _, x2_encoded = self.feature_extractor(x2)
         x = torch.cat((x1_encoded, x2_encoded), dim=1)
         x = self.comparator(x)
-        return x
+        return F.sigmoid(x)
 
     def loss_function(self, decode, encode):
         encode = encode.view(encode.size(0), -1)
@@ -93,16 +92,19 @@ class SiameseNetwork(nn.Module):
     
     def load_pretrained(self, 
                         feature_extractor_path: str=None,
-                        comparator_path: str=None):
+                        comparator_path: str=None, 
+                        device: str='cpu'):
         try: 
-            if feature_extractor_path != None: 
-                if os.path.exists(feature_extractor_path):
-                    self.feature_extractor.load_state_dict(torch.load(feature_extractor_path))
             if comparator_path != None: 
                 if os.path.exists(comparator_path):
-                    self.comparator.load_state_dict(torch.load(comparator_path))
+                    self.comparator.load_state_dict(torch.load(comparator_path, map_location=device))
+                    print(f"Loaded comparator from {comparator_path}")
                 
-            print(f"Pretrained model loaded from {feature_extractor_path} and {comparator_path}")
+            if feature_extractor_path != None: 
+                if os.path.exists(feature_extractor_path):
+                    self.feature_extractor.load_state_dict(torch.load(feature_extractor_path, map_location=device))
+                    print(f"Loaded feature extractor from {feature_extractor_path}")
+                    
         except Exception as e:
             print(f"Error loading pretrained model: {e}")
             raise e
