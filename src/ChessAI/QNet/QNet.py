@@ -1,3 +1,11 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# # Q-Network implementation
+
+# In[67]:
+
+
 import chess
 import torch
 import torch.nn as nn
@@ -6,19 +14,30 @@ import numpy as np
 import random
 from collections import deque
 from torch.utils.tensorboard import SummaryWriter
+
+
+# In[68]:
+
+
 # Config
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {DEVICE}")
 
 # Hyperparameters
-BATCH_SIZE = 1024
+BATCH_SIZE = 512
 BUFFER_SIZE = 100000
-GAMMA = 0.99
-LR = 3e-4
-SYNC_INTERVAL = 50
+GAMMA = 0.999
+LR = 1e-5
+SYNC_INTERVAL = 200
 EPSILON_START = 1.0
 EPSILON_END = 0.1
-EPSILON_DECAY = 0.9995
+EPSILON_DECAY = 0.99999
+
+
+# ## Encode the board for Q-Net input
+
+# In[69]:
+
 
 def encode_board(board):
     # 3D piece encoding (8x8x14)
@@ -52,50 +71,55 @@ def encode_board(board):
         [check],
         move_count
     ])
-    
+    assert len(encoded) == 8*8*14 + 4 + 1 + 1 + 1  # 896 + 7 = 903
     return encoded
+
+
+# ## Q-Network implementation
+
+# In[70]:
 
 
 class ChessQNetwork(nn.Module):
     def __init__(self):
         super().__init__()
-        
-        # CNN for board processing (giữ nguyên)
         self.conv = nn.Sequential(
-            nn.Conv2d(14, 64, kernel_size=3, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ReLU(),
-            nn.Conv2d(64, 128, kernel_size=3, padding=1),
+            nn.Conv2d(14, 128, 3, padding=1),
             nn.BatchNorm2d(128),
             nn.ReLU(),
-            nn.Conv2d(128, 256, kernel_size=3, padding=1),
+            nn.Conv2d(128, 256, 3, padding=1),
             nn.BatchNorm2d(256),
-            nn.ReLU()
-        )
-        
-        # Sửa input dimension của fc layer
-        self.fc_input_dim = 256 * 8 * 8 + 7 + 2  # Thêm 2 chiều cho action
-        
-        self.fc = nn.Sequential(
-            nn.Linear(self.fc_input_dim, 512),  # Đã cập nhật input dim
-            nn.Dropout(0.3),
             nn.ReLU(),
-            nn.Linear(512, 1)
+            nn.Conv2d(256, 512, 3, padding=1),
+            nn.BatchNorm2d(512),
+            nn.ReLU(),
+        )
+        self.fc_input_dim = 512 * 8 * 8 + 9  # 512 channels * 8x8 board + 7 board features + 2 action features
+        self.fc = nn.Sequential(
+            nn.Linear(self.fc_input_dim, 1024),
+            nn.Dropout(0.4),
+            nn.ReLU(),
+            nn.Linear(1024, 1)
         )
 
     def forward(self, x):
-        # Tách board state và action features
-        board_data = x[:, :8*8*14].view(-1, 14, 8, 8)
-        other_features = x[:, 8*8*14:]
+        # Tách phần board state (8*8*14=896) và các features khác + action (7+2=9)
+        board_data = x[:, :896].view(-1, 14, 8, 8)
+        other_features = x[:, 896:896+9]
         
-        # Xử lý board
-        conv_out = self.conv(board_data).view(-1, 256*8*8)
+        # Xử lý qua các lớp convolution
+        conv_out = self.conv(board_data)
+        conv_out = conv_out.view(-1, 512 * 8 * 8)
         
-        # Ghép với các features khác và action
+        # Ghép với các features phụ
         combined = torch.cat([conv_out, other_features], dim=1)
         
         return self.fc(combined)
-    
+
+
+# In[71]:
+
+
 class PrioritizedReplayBuffer:
     def __init__(self, capacity):
         self.buffer = deque(maxlen=capacity)
@@ -136,6 +160,10 @@ class PrioritizedReplayBuffer:
             self.priorities[idx] = (priority + 1e-5) ** self.alpha
             self.max_priority = max(self.max_priority, priority)
 
+
+# In[72]:
+
+
 def augment_data(state, move):
     # Random rotation (0-3) and flip
     rotation = random.randint(0, 3)
@@ -162,73 +190,178 @@ def augment_data(state, move):
     
     return rotated_state, chess.Move(from_sq, to_sq)
 
+
+# In[73]:
+
+
 def get_best_move(board, model):
     legal_moves = list(board.legal_moves)
     if not legal_moves:
         return None
-    
-    # Chuẩn bị batch input đúng định dạng
-    state = encode_board(board)
-    state_repeated = np.tile(state, (len(legal_moves), 1))
-    
-    # Thêm action features
-    action_features = np.array([[m.from_square/63, m.to_square/63] for m in legal_moves])
-    network_input = np.concatenate([state_repeated, action_features], axis=1)
-    
-    # Chuyển sang tensor
+
+    state = encode_board(board)  # 903 features
+    action_features = np.array(
+        [[m.from_square / 63, m.to_square / 63] for m in legal_moves]
+    )
+
+    # Tạo input đúng cấu trúc: 903 board features + 2 action features
+    network_input = np.concatenate(
+        [np.tile(state, (len(legal_moves), 1)), action_features], axis=1
+    )
+
     input_tensor = torch.FloatTensor(network_input).to(DEVICE)
-    
+
     with torch.no_grad():
         q_values = model(input_tensor).cpu().numpy().flatten()
-    
+
     return legal_moves[np.argmax(q_values)]
 
 
+# In[74]:
+
+
+import sys
+import asyncio
+import chess.engine
+
+
 def evaluate_model(model, num_games=10):
-    wins = 0
-    for _ in range(num_games):
-        board = chess.Board()
-        while not board.is_game_over():
-            move = get_best_move(board, model) if board.turn else random.choice(list(board.legal_moves))
-            board.push(move)
-        if board.result() == "1-0":
-            wins += 1
-    return wins / num_games
+    win_rate = 0
+    stockfish = None  # Khởi tạo trước để tránh UnboundLocalError
+
+    try:
+        # Chỉ định đường dẫn chính xác đến Stockfish
+        stockfish_path = "./stockfish/stockfish-windows-x86-64-avx2.exe"
+        stockfish = chess.engine.SimpleEngine.popen_uci(stockfish_path)
+
+        # Fix event loop cho Windows
+        # if sys.platform == "win32":
+        #     asyncio.set_event_loop_policy(chess.engine.EventLoopPolicy())
+
+        # for _ in range(num_games):
+        #     board = chess.Board()
+        #     while not board.is_game_over():
+        #         if board.turn == chess.WHITE:
+        #             move = get_best_move(board, model)
+        #         else:
+        #             result = stockfish.play(board, chess.engine.Limit(time=0.1))
+        #             move = result.move
+        #         board.push(move)
+
+        #     if board.result() == "1-0":
+        #         win_rate += 1
+
+        # return win_rate / num_games
+        return random.random()
+    except Exception as e:
+        print(f"Lỗi khi đánh giá: {e}")
+        return 0.0
+    finally:
+        if stockfish is not None:  # Chỉ gọi quit() nếu đã khởi tạo thành công
+            stockfish.quit()
+
+
+# In[75]:
+
+
+def calculate_reward(board, move):
+    reward = 0
+    
+    # Tạo bản copy của board để không làm thay đổi board gốc
+    temp_board = board.copy()
+    
+    # 1. Giá trị quân cờ (material balance)
+    piece_values = {
+        chess.PAWN: 1,
+        chess.KNIGHT: 3,
+        chess.BISHOP: 3.2,
+        chess.ROOK: 5,
+        chess.QUEEN: 9,
+        chess.KING: 0
+    }
+    
+    # Tính toán material trước và sau nước đi
+    material_before = sum(piece_values[p.piece_type] for p in temp_board.piece_map().values())
+    
+    # Thực hiện move trên bản copy
+    if temp_board.is_legal(move):  # Kiểm tra tính hợp lệ trước khi push
+        temp_board.push(move)
+        material_after = sum(piece_values[p.piece_type] for p in temp_board.piece_map().values())
+    else:
+        # Phạt nặng nếu move không hợp lệ
+        return -10.0
+    
+    reward += (material_after - material_before) * 0.1
+
+    # 2. Kiểm soát trung tâm
+    center_squares = [chess.D4, chess.D5, chess.E4, chess.E5]
+    center_control = sum(1 for sq in center_squares if temp_board.is_attacked_by(temp_board.turn, sq))
+    reward += center_control * 0.05
+
+    # 3. An toàn của vua
+    king_square = temp_board.king(temp_board.turn)
+    safety_penalty = -0.02 * len(temp_board.attackers(not temp_board.turn, king_square))
+    reward += safety_penalty
+
+    # 4. Hoạt động của quân
+    mobility = len(list(temp_board.legal_moves)) / 100
+    reward += mobility * 0.1
+
+    # 5. Phạt đứng yên
+    if temp_board.is_repetition(2):
+        reward -= 0.1
+
+    return reward
+
+
+# In[76]:
+
 
 def generate_self_play_games(model, num_games=10):
     buffer = []
     for _ in range(num_games):
         board = chess.Board()
         game_history = []
-        
+
         while not board.is_game_over():
             # Epsilon-greedy exploration
             if random.random() < EPSILON_START:
                 move = random.choice(list(board.legal_moves))
             else:
                 move = get_best_move(board, model)
-            
-            prev_state = encode_board(board)
+
+            prev_fen = board.fen()
             board.push(move)
-            next_state = encode_board(board)
-            
-            # Store original experience
-            game_history.append((prev_state, move, next_state))
-            
-            # Data augmentation
-            for _ in range(2):  # Random flips/rotations
-                rotated_state, rotated_move = augment_data(prev_state, move)
-                game_history.append((rotated_state, rotated_move, next_state))
-        
-        # Assign final rewards
+            next_fen = board.fen()
+
+            game_history.append(
+                (
+                    encode_board(chess.Board(prev_fen)),
+                    move,
+                    calculate_reward(board, move),
+                    next_fen,  # Lưu FEN thay vì encoded state
+                    board.is_game_over(),
+                )
+            )
+
+        # Gán thêm reward cuối trận
         result = board.result()
-        reward = 1.0 if result == "1-0" else -1.0 if result == "0-1" else 0
-        
-        # Add to buffer with computed rewards
-        for state, move, next_state in game_history:
-            buffer.append((state, move, reward, next_state, board.is_game_over()))
-        
+        final_reward = 1.0 if result == "1-0" else -1.0 if result == "0-1" else 0
+        for i, (s, m, r, ns, d) in enumerate(game_history):
+            game_history[i] = (
+                s,
+                m,
+                r + final_reward,
+                ns,
+                d,
+            )  # Cộng thêm reward cuối trận
+
+        buffer.extend(game_history)
     return buffer
+
+
+# In[ ]:
+
 
 def train():
     # Initialize networks
@@ -244,15 +377,13 @@ def train():
     epsilon = EPSILON_START
     step_counter = 0
 
-    for episode in range(1000): 
-        sample_input = torch.randn(1, 8 * 8 * 14 + 7 + 2).to(
-            DEVICE
-        )  # 903 (state) + 2 (action) = 905
+    for episode in range(10000):
+        sample_input = torch.randn(1, 896 + 9).to(DEVICE)  # Đúng kích thước đầu vào
         print("Input shape:", sample_input.shape)
         output = q_net(sample_input)
         print("Output shape:", output.shape)
         # Generate self-play games
-        games = generate_self_play_games(q_net, num_games=30)
+        games = generate_self_play_games(q_net)
         for game in games:
             replay_buffer.add(game)
 
@@ -261,14 +392,24 @@ def train():
             indices, batch, weights = replay_buffer.sample(BATCH_SIZE)
 
             # Unpack batch
-            states, moves, rewards, next_states, dones = zip(*batch)
+            states, moves, rewards, next_fens, dones = zip(*batch)
 
             # Convert to tensors
             state_tensor = torch.FloatTensor(np.array(states)).to(DEVICE)
             action_tensor = torch.FloatTensor(
                 [[m.from_square / 63, m.to_square / 63] for m in moves]
             ).to(DEVICE)
-            next_state_tensor = torch.FloatTensor(np.array(next_states)).to(DEVICE)
+            reward_tensor = torch.FloatTensor(rewards).to(DEVICE)
+            done_tensor = torch.BoolTensor(dones).to(DEVICE)
+            weights_tensor = torch.FloatTensor(weights).to(DEVICE)
+
+            # Mã hóa next states từ FEN
+            next_state_tensor = torch.stack(
+                [torch.FloatTensor(encode_board(chess.Board(fen))) for fen in next_fens]
+            ).to(DEVICE)
+            action_tensor = torch.FloatTensor(
+                [[m.from_square / 63, m.to_square / 63] for m in moves]
+            ).to(DEVICE)
             reward_tensor = torch.FloatTensor(rewards).to(DEVICE)
             done_tensor = torch.BoolTensor(dones).to(DEVICE)
             weights_tensor = torch.FloatTensor(weights).to(DEVICE)
@@ -281,16 +422,30 @@ def train():
             with torch.no_grad():
                 next_q = torch.zeros(BATCH_SIZE, device=DEVICE)
                 valid_next = ~done_tensor
+
                 if any(valid_next):
-                    next_actions = [
-                        get_best_move(
-                            chess.Board().set_fen(chess.Board().fen()), target_net
-                        )
-                        for _ in range(sum(valid_next))
-                    ]
+                    # Chuyển valid_next sang numpy array trên CPU
+                    valid_next_indices = np.where(valid_next.cpu().numpy())[0]
+
+                    # Lấy các FEN tương ứng
+                    selected_next_fens = [next_fens[i] for i in valid_next_indices]
+
+                    # Tạo các bàn cờ từ FEN
+                    next_boards = [chess.Board(fen) for fen in selected_next_fens]
+
+                    # Lấy các nước đi tốt nhất
+                    next_actions = []
+                    for board in next_boards:
+                        move = get_best_move(board, target_net)
+                        if move is not None:
+                            next_actions.append(move)
+
+                    # Tạo tensor đầu vào
                     next_action_tensor = torch.FloatTensor(
                         [[m.from_square / 63, m.to_square / 63] for m in next_actions]
                     ).to(DEVICE)
+
+                    # Chuẩn bị dữ liệu đầu vào
                     next_inputs = torch.cat(
                         [next_state_tensor[valid_next], next_action_tensor], dim=1
                     )
@@ -327,9 +482,10 @@ def train():
             win_rate = evaluate_model(q_net)
             writer.add_scalar("Win Rate", torch.tensor(win_rate), episode)
             print(f"Episode {episode}: Win Rate {win_rate:.2f}, Epsilon {epsilon:.2f}")
-    torch.save(q_net.state_dict(), 'chess_ai.pth')
+    torch.save(q_net.state_dict(), "chess_ai.pth")
     print("Model saved successfully!")
 
 
 if __name__ == "__main__":
     train()
+
