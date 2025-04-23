@@ -16,43 +16,45 @@ import torch.nn.functional as F
 class AutoEncoder(nn.Module):
     def __init__(self, layer=[773, 600, 400, 200, 100]):
         super(AutoEncoder, self).__init__()
+        self.layer = layer
 
-        # Encoder
-        encoder_layers = []
+        self.encoder_layers = nn.ModuleList()
+        self.decoder_layers = nn.ModuleList()
+
         for i in range(len(layer) - 1):
-            encoder_layers.append(nn.Linear(layer[i], layer[i + 1]))
-            encoder_layers.append(nn.BatchNorm1d(layer[i + 1]))
-            encoder_layers.append(nn.LeakyReLU())
-        self.encoder = nn.Sequential(*encoder_layers)
+            self.encoder_layers.append(nn.Sequential(
+                nn.Linear(layer[i], layer[i + 1]),
+                nn.BatchNorm1d(layer[i + 1]),
+                nn.LeakyReLU()
+            ))
 
-        # Decoder
-        decoder_layers = []
         for i in range(len(layer) - 1, 0, -1):
-            decoder_layers.append(nn.Linear(layer[i], layer[i - 1]))
-            decoder_layers.append(nn.BatchNorm1d(layer[i - 1]))
-            decoder_layers.append(nn.LeakyReLU())
-        self.decoder = nn.Sequential(*decoder_layers)
-        
-        self.sigmoid = nn.Sigmoid()
-    
+            self.decoder_layers.append(nn.Sequential(
+                nn.Linear(layer[i], layer[i - 1]),
+                nn.BatchNorm1d(layer[i - 1]),
+                nn.LeakyReLU()
+            ))
+
+        self.encoder = nn.Sequential(*self.encoder_layers)
+        self.decoder = nn.Sequential(*self.decoder_layers)
+
     def encode(self, x):
-        x = x.view(x.size(0), -1)  # Flatten input if needed
+        x = x.view(x.size(0), -1)
         x = self.encoder(x)
         return x
-    
+
     def decode(self, z):
         z = self.decoder(z)
-        z = self.sigmoid(z)
         return z
-    
+
     def forward(self, x):
-        encoder_out = self.encode(x)
-        decoder_out = self.decode(encoder_out)
-        return decoder_out, encoder_out
+        z = self.encode(x)
+        out = self.decode(z)
+        return out, z
 
     def loss_function(self, recon_x, x):
         x = x.view(x.size(0), -1)
-        return F.binary_cross_entropy(recon_x, x, reduction='sum')
+        return F.mse_loss(recon_x, x, reduction='sum')
     
 class SiameseNetwork(nn.Module):
     def __init__(self, 
@@ -84,11 +86,11 @@ class SiameseNetwork(nn.Module):
         _, x2_encoded = self.feature_extractor(x2)
         x = torch.cat((x1_encoded, x2_encoded), dim=1)
         x = self.comparator(x)
-        return F.sigmoid(x)
+        return F.softmax(x)
 
     def loss_function(self, decode, encode):
         encode = encode.view(encode.size(0), -1)
-        return F.binary_cross_entropy(decode, encode, reduction='sum')
+        return F.cross_entropy(decode, encode, reduction='sum')
     
     def load_pretrained(self, 
                         feature_extractor_path: str=None,
