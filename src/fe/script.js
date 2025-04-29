@@ -1,3 +1,19 @@
+// Mapping từ ký tự Unicode sang tên file ảnh SVG
+const pieceImageMap = {
+  "♜": "b_rook.svg",
+  "♞": "b_knight.svg",
+  "♝": "b_bishop.svg",
+  "♛": "b_queen.svg",
+  "♚": "b_king.svg",
+  "♟": "b_pawn.svg",
+  "♖": "w_rook.svg",
+  "♘": "w_knight.svg",
+  "♗": "w_bishop.svg",
+  "♕": "w_queen.svg",
+  "♔": "w_king.svg",
+  "♙": "w_pawn.svg"
+};
+
 // Unicode chess pieces starting positions
 const initialBoard = [
   ["♜", "♞", "♝", "♛", "♚", "♝", "♞", "♜"],
@@ -73,7 +89,13 @@ document.addEventListener("DOMContentLoaded", () => {
           cell.dataset.row = r;
           cell.dataset.col = c - 1;
           const p = initialBoard[r][c - 1];
-          if (p) cell.textContent = p;
+          if (p) {
+            const img = document.createElement("img");
+            img.src = `images/${pieceImageMap[p]}`;
+            img.className = "piece-img";
+            img.alt = p;
+            cell.appendChild(img);
+          }
           cell.addEventListener("click", () => handleCellClick(r, c - 1));
           if (selected && selected.row === r && selected.col === c - 1)
             cell.classList.add("selected");
