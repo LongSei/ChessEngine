@@ -176,3 +176,17 @@ html {
   object-fit: contain;
   pointer-events: none; 
 }
+/* Thêm vào file style.css */
+.square.selected {
+  background-color: #4CAF50 !important; /* Màu xanh lá cho ô được chọn */
+  box-shadow: 0 0 10px rgba(76, 175, 80, 0.8);
+}
+
+.square.possible-move {
+  background-color: #FFC107 !important; /* Màu vàng cho ô có thể di chuyển */
+  box-shadow: 0 0 8px rgba(255, 193, 7, 0.6);
+}
+
+.square.capture {
+  background-color: #F44336 !important; /* Màu đỏ cho ô có thể ăn quân */
+}

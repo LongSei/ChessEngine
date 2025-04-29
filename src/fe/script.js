@@ -28,6 +28,7 @@ const initialBoard = [
 
 let selected = null;
 let possibleMoves = [];
+let currentPlayer = 'white'; // Thêm biến để theo dõi lượt chơi
 
 // Utility: generate possible moves (basic logic)
 function getPossibleMoves(r, c) {
@@ -35,34 +36,61 @@ function getPossibleMoves(r, c) {
   const moves = [];
   switch (piece) {
     case "♙": // white pawn
-      if (r > 0 && !initialBoard[r - 1][c]) moves.push([r - 1, c]);
+      if (r > 0 && !initialBoard[r - 1][c]) moves.push({row: r - 1, col: c, type: 'move'});
+      // Thêm khả năng ăn chéo
+      if (r > 0 && c > 0 && initialBoard[r - 1][c - 1] && isBlackPiece(initialBoard[r - 1][c - 1])) {
+        moves.push({row: r - 1, col: c - 1, type: 'capture'});
+      }
+      if (r > 0 && c < 7 && initialBoard[r - 1][c + 1] && isBlackPiece(initialBoard[r - 1][c + 1])) {
+        moves.push({row: r - 1, col: c + 1, type: 'capture'});
+      }
       break;
     case "♟": // black pawn
-      if (r < 7 && !initialBoard[r + 1][c]) moves.push([r + 1, c]);
+      if (r < 7 && !initialBoard[r + 1][c]) moves.push({row: r + 1, col: c, type: 'move'});
+      // Thêm khả năng ăn chéo
+      if (r < 7 && c > 0 && initialBoard[r + 1][c - 1] && isWhitePiece(initialBoard[r + 1][c - 1])) {
+        moves.push({row: r + 1, col: c - 1, type: 'capture'});
+      }
+      if (r < 7 && c < 7 && initialBoard[r + 1][c + 1] && isWhitePiece(initialBoard[r + 1][c + 1])) {
+        moves.push({row: r + 1, col: c + 1, type: 'capture'});
+      }
       break;
     case "♘":
     case "♞": // knight
       [
-        [2, 1],
-        [2, -1],
-        [-2, 1],
-        [-2, -1],
-        [1, 2],
-        [1, -2],
-        [-1, 2],
-        [-1, -2],
-      ].forEach((d) => {
-        const nr = r + d[0],
-          nc = c + d[1];
-        if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) moves.push([nr, nc]);
+        [2, 1], [2, -1], [-2, 1], [-2, -1],
+        [1, 2], [1, -2], [-1, 2], [-1, -2]
+      ].forEach(([dr, dc]) => {
+        const nr = r + dr, nc = c + dc;
+        if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
+          const target = initialBoard[nr][nc];
+          if (!target || (piece === "♘" ? isBlackPiece(target) : isWhitePiece(target))) {
+            moves.push({
+              row: nr,
+              col: nc,
+              type: target ? 'capture' : 'move'
+            });
+          }
+        }
       });
       break;
-    // TODO: add other pieces (rook, bishop, queen, king)
+    // TODO: Thêm logic cho các quân cờ khác (rook, bishop, queen, king)
     default:
       break;
   }
   return moves;
 }
+
+// Hàm kiểm tra quân trắng
+function isWhitePiece(piece) {
+  return ['♔', '♕', '♖', '♗', '♘', '♙'].includes(piece);
+}
+
+// Hàm kiểm tra quân đen
+function isBlackPiece(piece) {
+  return ['♚', '♛', '♜', '♝', '♞', '♟'].includes(piece);
+}
+
 
 document.addEventListener("DOMContentLoaded", () => {
   const welcomeScreen = document.getElementById("welcome-screen");
@@ -97,10 +125,17 @@ document.addEventListener("DOMContentLoaded", () => {
             cell.appendChild(img);
           }
           cell.addEventListener("click", () => handleCellClick(r, c - 1));
-          if (selected && selected.row === r && selected.col === c - 1)
+          
+          // Highlight ô được chọn
+          if (selected && selected.row === r && selected.col === c - 1) {
             cell.classList.add("selected");
-          possibleMoves.forEach((m) => {
-            if (m[0] === r && m[1] === c - 1) cell.classList.add("possible");
+          }
+          
+          // Highlight các nước đi hợp lệ
+          possibleMoves.forEach(move => {
+            if (move.row === r && move.col === c - 1) {
+              cell.classList.add(move.type === 'capture' ? 'capture' : 'possible-move');
+            }
           });
         } else if (c === 0 && r < 8) {
           cell.className = "coord-label";
@@ -118,28 +153,81 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function handleCellClick(row, col) {
     const piece = initialBoard[row][col];
+    
+    // Nếu đã có quân được chọn trước đó
     if (selected) {
-      // move to clicked if in possibleMoves
-      if (possibleMoves.some((m) => m[0] === row && m[1] === col)) {
-        const { row: sr, col: sc } = selected;
-        initialBoard[row][col] = initialBoard[sr][sc];
-        initialBoard[sr][sc] = "";
+      // Kiểm tra ô click có trong danh sách nước đi hợp lệ không
+      const move = possibleMoves.find(m => m.row === row && m.col === col);
+      
+      if (move) {
+        // Thực hiện di chuyển
+        initialBoard[row][col] = initialBoard[selected.row][selected.col];
+        initialBoard[selected.row][selected.col] = "";
+        
+        // Đổi lượt chơi
+        currentPlayer = currentPlayer === 'white' ? 'black' : 'white';
+        turnLabel.textContent = `Lượt: ${currentPlayer === 'white' ? 'Trắng' : 'Đen'}`;
       }
-      selected = null;
-      possibleMoves = [];
-      renderBoard();
-    } else if (piece) {
+      
+      resetSelection();
+    } 
+    // Nếu click vào quân cờ hợp lệ
+    else if (piece && isValidPiece(piece, currentPlayer)) {
       selected = { row, col };
       possibleMoves = getPossibleMoves(row, col);
-      renderBoard();
+      highlightMoves();
     }
+    
+    renderBoard();
+  }
+  
+  // Hàm highlight các ô có thể di chuyển
+function highlightMoves() {
+  // Xóa highlight cũ trước khi highlight mới
+  document.querySelectorAll('.square').forEach(square => {
+    square.classList.remove('selected', 'possible-move', 'capture');
+  });
+
+  // Highlight ô đang được chọn
+  if (selected) {
+    const selectedCell = document.querySelector(
+      `[data-row="${selected.row}"][data-col="${selected.col}"]`
+    );
+    if (selectedCell) selectedCell.classList.add('selected');
   }
 
+  // Highlight các ô có thể di chuyển
+  possibleMoves.forEach(move => {
+    const cell = document.querySelector(
+      `[data-row="${move.row}"][data-col="${move.col}"]`
+    );
+    if (cell) {
+      cell.classList.add(move.type === 'capture' ? 'capture' : 'possible-move');
+    }
+  });
+}
+
+// Hàm reset trạng thái chọn quân
+function resetSelection() {
+  selected = null;
+  possibleMoves = [];
+  highlightMoves(); // Cập nhật giao diện ngay lập tức
+}
+
+// Hàm kiểm tra quân cờ có thuộc người chơi hiện tại không
+function isValidPiece(piece, player) {
+  const whitePieces = ['♔', '♕', '♖', '♗', '♘', '♙'];
+  const blackPieces = ['♚', '♛', '♜', '♝', '♞', '♟'];
+  
+  return (player === 'white' && whitePieces.includes(piece)) || 
+         (player === 'black' && blackPieces.includes(piece));
+}
   function startGame(mode) {
     welcomeScreen.style.display = "none";
     gameScreen.style.display = "flex";
     modeLabel.textContent = mode === "AI" ? "Chế độ: Máy" : "Chế độ: Người";
     playerLabel.innerHTML = `Player: ${mode === "AI" ? "🤖" : "👤"}`;
+    currentPlayer = 'white';
     turnLabel.textContent = "Lượt: Trắng";
     selected = null;
     possibleMoves = [];
@@ -164,6 +252,7 @@ document.addEventListener("DOMContentLoaded", () => {
           ["♖", "♘", "♗", "♕", "♔", "♗", "♘", "♖"],
         ]
       );
+      currentPlayer = 'white';
       turnLabel.textContent = "Lượt: Trắng";
       selected = null;
       possibleMoves = [];
