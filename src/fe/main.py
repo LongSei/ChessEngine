@@ -2,6 +2,7 @@ import pygame
 import sys
 import os
 from pygame.locals import *
+import chess  # Thêm thư viện chess
 
 # Initialize pygame
 pygame.init()
@@ -10,7 +11,6 @@ pygame.font.init()
 # Font initialization simplified for English only
 def init_fonts():
     font_name = "Arial"  # Default English font
-    
     return (
         pygame.font.SysFont(font_name, 14),
         pygame.font.SysFont(font_name, 24),
@@ -70,17 +70,10 @@ class GameState:
         self.selected_piece = None
         self.possible_moves = []
         
-        # Initial board setup
-        self.board = [
-            ["r", "n", "b", "q", "k", "b", "n", "r"],
-            ["p", "p", "p", "p", "p", "p", "p", "p"],
-            [""] * 8,
-            [""] * 8,
-            [""] * 8,
-            [""] * 8,
-            ["P", "P", "P", "P", "P", "P", "P", "P"],
-            ["R", "N", "B", "Q", "K", "B", "N", "R"]
-        ]
+        # Khởi tạo bàn cờ sử dụng chess library
+        self.chess_board = chess.Board()  # Thêm bàn cờ chess
+        self.board = [[""] * 8 for _ in range(8)]  # Khởi tạo board rỗng
+        self.sync_board()  # Đồng bộ bàn cờ ngay khi khởi tạo
         
         self.piece_image_map = {
             "r": "black_rook.png",
@@ -147,6 +140,16 @@ class GameState:
             except:
                 pass
             return bg
+
+    def sync_board(self):
+        """Đồng bộ bàn cờ pygame với bàn cờ chess"""
+        self.board = [[""] * 8 for _ in range(8)]  # Reset board
+        for square in chess.SQUARES:
+            piece = self.chess_board.piece_at(square)
+            if piece:
+                row = 7 - (square // 8)  # Chuyển đổi từ hệ chess sang hệ pygame
+                col = square % 8
+                self.board[row][col] = piece.symbol()
 
 game_state = GameState()
 
@@ -246,28 +249,30 @@ def draw_game_screen():
         s.fill(MODAL_BG)
         screen.blit(s, (0, 0))
         
-        modal_width, modal_height = 300, 200
+        modal_width, modal_height = 250, 150  # Điều chỉnh kích thước modal theo giao diện
         modal_x = (SCREEN_WIDTH - modal_width) // 2
         modal_y = (SCREEN_HEIGHT - modal_height) // 2
         
         pygame.draw.rect(screen, MODAL_CONTENT, (modal_x, modal_y, modal_width, modal_height))
         pygame.draw.rect(screen, BLACK, (modal_x, modal_y, modal_width, modal_height), 2)
         
+        # Chia thông báo thành hai dòng
         line1 = font_medium.render("Are you sure you", True, BLACK)
         line2 = font_medium.render("want to reset the game?", True, BLACK)
-        line1_rect = line1.get_rect(center=(SCREEN_WIDTH//2, modal_y + 50))
-        line2_rect = line2.get_rect(center=(SCREEN_WIDTH//2, modal_y + 80))
+        line1_rect = line1.get_rect(center=(modal_x + modal_width//2, modal_y + 40))
+        line2_rect = line2.get_rect(center=(modal_x + modal_width//2, modal_y + 70))
         screen.blit(line1, line1_rect)
         screen.blit(line2, line2_rect)
         
-        pygame.draw.rect(screen, (51, 51, 51), (modal_x + 50, modal_y + 100, 80, 40))
-        yes_text = font_medium.render("Yes", True, WHITE)
-        yes_rect = yes_text.get_rect(center=(modal_x + 90, modal_y + 120))
+        # Vẽ nút "Có" và "Không"
+        pygame.draw.rect(screen, (51, 51, 51), (modal_x + 50, modal_y + 90, 50, 30))
+        yes_text = font_medium.render("Có", True, WHITE)
+        yes_rect = yes_text.get_rect(center=(modal_x + 75, modal_y + 105))
         screen.blit(yes_text, yes_rect)
         
-        pygame.draw.rect(screen, (51, 51, 51), (modal_x + 170, modal_y + 100, 80, 40))
-        no_text = font_medium.render("No", True, WHITE)
-        no_rect = no_text.get_rect(center=(modal_x + 210, modal_y + 120))
+        pygame.draw.rect(screen, (51, 51, 51), (modal_x + 150, modal_y + 90, 50, 30))
+        no_text = font_medium.render("Không", True, WHITE)
+        no_rect = no_text.get_rect(center=(modal_x + 175, modal_y + 105))
         screen.blit(no_text, no_rect)
 
 def draw_modal():
@@ -296,80 +301,73 @@ def draw_modal():
     home_rect = home_text.get_rect(center=(SCREEN_WIDTH//2, modal_y + 150))
     screen.blit(home_text, home_rect)
 
+def row_col_to_square(row, col):
+    """Chuyển đổi tọa độ (row, col) sang ký hiệu cờ vua (ví dụ: a1, b2)"""
+    file = chr(ord('a') + col)  # Chuyển cột thành a-h
+    rank = str(8 - row)  # Chuyển hàng thành 1-8
+    return f"{file}{rank}"
+
+def square_to_row_col(square):
+    """Chuyển đổi ký hiệu cờ vua (ví dụ: a1) sang tọa độ (row, col)"""
+    file = ord(square[0]) - ord('a')
+    rank = 8 - int(square[1])
+    return rank, file
+
 def get_possible_moves(row, col):
-    piece = game_state.board[row][col]
+    """Lấy danh sách các nước đi hợp lệ từ ô (row, col) sử dụng chess library"""
+    square = row_col_to_square(row, col)
     moves = []
     
-    if not piece:
-        return moves
-    
-    if piece == "P":  # White pawn
-        if row > 0 and not game_state.board[row - 1][col]:
-            moves.append({'row': row - 1, 'col': col, 'type': 'move'})
-        
-        if row > 0 and col > 0 and game_state.board[row - 1][col - 1] and game_state.board[row - 1][col - 1].islower():
-            moves.append({'row': row - 1, 'col': col - 1, 'type': 'capture'})
-        if row > 0 and col < 7 and game_state.board[row - 1][col + 1] and game_state.board[row - 1][col + 1].islower():
-            moves.append({'row': row - 1, 'col': col + 1, 'type': 'capture'})
-    
-    elif piece == "p":  # Black pawn
-        if row < 7 and not game_state.board[row + 1][col]:
-            moves.append({'row': row + 1, 'col': col, 'type': 'move'})
-        
-        if row < 7 and col > 0 and game_state.board[row + 1][col - 1] and game_state.board[row + 1][col - 1].isupper():
-            moves.append({'row': row + 1, 'col': col - 1, 'type': 'capture'})
-        if row < 7 and col < 7 and game_state.board[row + 1][col + 1] and game_state.board[row + 1][col + 1].isupper():
-            moves.append({'row': row + 1, 'col': col + 1, 'type': 'capture'})
-    
-    elif piece.lower() == "n":  # Knight
-        knight_moves = [
-            (2, 1), (2, -1), (-2, 1), (-2, -1),
-            (1, 2), (1, -2), (-1, 2), (-1, -2)
-        ]
-        
-        for dr, dc in knight_moves:
-            nr, nc = row + dr, col + dc
-            if 0 <= nr < 8 and 0 <= nc < 8:
-                target = game_state.board[nr][nc]
-                if not target or (piece.isupper() and target.islower()) or (piece.islower() and target.isupper()):
-                    moves.append({
-                        'row': nr,
-                        'col': nc,
-                        'type': 'capture' if target else 'move'
-                    })
+    # Lấy tất cả nước đi hợp lệ từ bàn cờ
+    for move in game_state.chess_board.legal_moves:
+        move_str = move.uci()  # Định dạng nước đi: ví dụ "a1a2"
+        if move_str.startswith(square):  # Kiểm tra nếu nước đi bắt đầu từ ô hiện tại
+            dest_square = move_str[2:4]  # Lấy ô đích (ví dụ: "a2")
+            dest_row, dest_col = square_to_row_col(dest_square)
+            move_type = 'capture' if game_state.chess_board.is_capture(move) else 'move'
+            moves.append({'row': dest_row, 'col': dest_col, 'type': move_type})
     
     return moves
 
-def is_valid_piece(piece, player):
-    return (player == 'white' and piece.isupper()) or (player == 'black' and piece.islower())
-
 def handle_square_click(row, col):
     if game_state.selected_piece:
+        # Kiểm tra xem nước đi có hợp lệ không
         move = next((m for m in game_state.possible_moves if m['row'] == row and m['col'] == col), None)
-        
         if move:
-            game_state.board[row][col] = game_state.board[game_state.selected_piece[0]][game_state.selected_piece[1]]
-            game_state.board[game_state.selected_piece[0]][game_state.selected_piece[1]] = ""
-            game_state.current_player = 'black' if game_state.current_player == 'white' else 'white'
+            # Chuyển đổi nước đi sang định dạng UCI
+            from_square = row_col_to_square(game_state.selected_piece[0], game_state.selected_piece[1])
+            to_square = row_col_to_square(row, col)
+            uci_move = f"{from_square}{to_square}"
+            
+            # Tạo đối tượng Move từ UCI
+            chess_move = chess.Move.from_uci(uci_move)
+            
+            # Kiểm tra nếu nước đi hợp lệ trong chess_board
+            if chess_move in game_state.chess_board.legal_moves:
+                # Thực hiện nước đi trên chess_board
+                game_state.chess_board.push(chess_move)
+                
+                # Đồng bộ bàn cờ pygame với chess_board
+                game_state.sync_board()
+                
+                # Cập nhật lượt chơi
+                game_state.current_player = 'black' if game_state.current_player == 'white' else 'white'
         
         game_state.selected_piece = None
         game_state.possible_moves = []
     
-    elif game_state.board[row][col] and is_valid_piece(game_state.board[row][col], game_state.current_player):
-        game_state.selected_piece = (row, col)
-        game_state.possible_moves = get_possible_moves(row, col)
+    else:
+        # Kiểm tra xem ô được chọn có quân cờ của người chơi hiện tại không
+        piece = game_state.board[row][col]
+        if piece and ((game_state.current_player == 'white' and piece.isupper()) or 
+                      (game_state.current_player == 'black' and piece.islower())):
+            game_state.selected_piece = (row, col)
+            game_state.possible_moves = get_possible_moves(row, col)
 
 def reset_game():
-    game_state.board = [
-        ["r", "n", "b", "q", "k", "b", "n", "r"],
-        ["p", "p", "p", "p", "p", "p", "p", "p"],
-        [""] * 8,
-        [""] * 8,
-        [""] * 8,
-        [""] * 8,
-        ["P", "P", "P", "P", "P", "P", "P", "P"],
-        ["R", "N", "B", "Q", "K", "B", "N", "R"]
-    ]
+    """Reset bàn cờ pygame và chess_board"""
+    game_state.chess_board = chess.Board()  # Reset bàn cờ chess
+    game_state.sync_board()  # Đồng bộ bàn cờ pygame
     game_state.current_player = 'white'
     game_state.selected_piece = None
     game_state.possible_moves = []
@@ -413,19 +411,19 @@ while running:
                     show_modal = True
             
             elif show_reset_confirmation:
-                modal_width, modal_height = 300, 200
+                modal_width, modal_height = 250, 150
                 modal_x = (SCREEN_WIDTH - modal_width) // 2
                 modal_y = (SCREEN_HEIGHT - modal_height) // 2
-        
-                if (modal_x + 50 <= mouse_pos[0] <= modal_x + 130 and 
-                    modal_y + 100 <= mouse_pos[1] <= modal_y + 140):
+                
+                if (modal_x + 50 <= mouse_pos[0] <= modal_x + 100 and 
+                    modal_y + 90 <= mouse_pos[1] <= modal_y + 120):
                     reset_game()
                     show_reset_confirmation = False
-        
-                elif (modal_x + 170 <= mouse_pos[0] <= modal_x + 250 and 
-                      modal_y + 100 <= mouse_pos[1] <= modal_y + 140):
+                
+                elif (modal_x + 150 <= mouse_pos[0] <= modal_x + 200 and 
+                      modal_y + 90 <= mouse_pos[1] <= modal_y + 120):
                     show_reset_confirmation = False
-
+            
             elif show_modal:
                 modal_width, modal_height = 300, 200
                 modal_x = (SCREEN_WIDTH - modal_width) // 2
