@@ -96,10 +96,14 @@ class GameState:
             "K": "white_king.png",
             "P": "white_pawn.png"
         }
+        self.icon_images = {
+            "restart": self._load_icon("restart.png"),  
+            "settings": self._load_icon("settings.png")
+        }
         
         self.piece_images = self._load_piece_images()
         self.background = self._load_background()
-
+    
     def _load_piece_images(self):
         pieces = {}
         for piece, img_file in self.piece_image_map.items():
@@ -117,6 +121,18 @@ class GameState:
                 pygame.draw.circle(surf, color, (SQUARE_SIZE//2-5, SQUARE_SIZE//2-5), SQUARE_SIZE//2-15)
                 pieces[piece] = surf
         return pieces
+    
+    def _load_icon(self, filename):
+        """Tải và scale biểu tượng cho các nút chức năng"""
+        try:
+            img = load_image(filename)
+            if img:
+                return pygame.transform.scale(img, (30, 30))
+        except Exception as e:
+            print(f"Error loading icon {filename}: {str(e)}")
+            surf = pygame.Surface((30, 30), pygame.SRCALPHA)
+            pygame.draw.circle(surf, (200, 200, 200), (15, 15), 14)
+            return surf
 
     def _load_background(self):
         bg = load_image("background.jpg")
@@ -158,11 +174,9 @@ def draw_game_screen():
                     (BOARD_OFFSET_X - 20, BOARD_OFFSET_Y - 60, 
                      BOARD_SIZE * SQUARE_SIZE + 40, BOARD_SIZE * SQUARE_SIZE + 80))
     
-    player_text = font_medium.render(f"Player: {'🤖' if game_state.game_mode == 'AI' else '👤'}", True, WHITE)
     mode_text = font_medium.render(f"Mode: {'AI' if game_state.game_mode == 'AI' else 'Human'}", True, WHITE)
     turn_text = font_medium.render(f"Turn: {'White' if game_state.current_player == 'white' else 'Black'}", True, WHITE)
     
-    screen.blit(player_text, (BOARD_OFFSET_X + 20, BOARD_OFFSET_Y - 40))
     screen.blit(mode_text, (BOARD_OFFSET_X + 200, BOARD_OFFSET_Y - 40))
     screen.blit(turn_text, (BOARD_OFFSET_X + 400, BOARD_OFFSET_Y - 40))
     
@@ -204,13 +218,57 @@ def draw_game_screen():
         text_rect = text.get_rect(center=(x, y))
         screen.blit(text, text_rect)
     
-    pygame.draw.rect(screen, (51, 51, 51), (BOARD_OFFSET_X + BOARD_SIZE * SQUARE_SIZE - 100, BOARD_OFFSET_Y - 40, 40, 40))
-    pygame.draw.rect(screen, (51, 51, 51), (BOARD_OFFSET_X + BOARD_SIZE * SQUARE_SIZE - 50, BOARD_OFFSET_Y - 40, 40, 40))
+    restart_button_rect = pygame.Rect(BOARD_OFFSET_X + BOARD_SIZE * SQUARE_SIZE - 100, BOARD_OFFSET_Y - 40, 40, 40)
+    settings_button_rect = pygame.Rect(BOARD_OFFSET_X + BOARD_SIZE * SQUARE_SIZE - 50, BOARD_OFFSET_Y - 40, 40, 40)
+    pygame.draw.rect(screen, (150, 150, 150), restart_button_rect)  
+    pygame.draw.rect(screen, (150, 150, 150), settings_button_rect)  
+
+    # Vẽ các icon
+    restart_icon = game_state.icon_images["restart"]
+    settings_icon = game_state.icon_images["settings"]
     
-    restart_text = font_medium.render("↻", True, WHITE)
-    settings_text = font_medium.render("⚙", True, WHITE)
-    screen.blit(restart_text, (BOARD_OFFSET_X + BOARD_SIZE * SQUARE_SIZE - 80, BOARD_OFFSET_Y - 30))
-    screen.blit(settings_text, (BOARD_OFFSET_X + BOARD_SIZE * SQUARE_SIZE - 30, BOARD_OFFSET_Y - 30))
+    restart_pos = (
+        BOARD_OFFSET_X + BOARD_SIZE * SQUARE_SIZE - 100 + (40 - restart_icon.get_width()) // 2,
+        BOARD_OFFSET_Y - 40 + (40 - restart_icon.get_height()) // 2
+    )
+    
+    settings_pos = (
+        BOARD_OFFSET_X + BOARD_SIZE * SQUARE_SIZE - 50 + (40 - settings_icon.get_width()) // 2,
+        BOARD_OFFSET_Y - 40 + (40 - settings_icon.get_height()) // 2
+    )
+    
+    screen.blit(restart_icon, restart_pos)
+    screen.blit(settings_icon, settings_pos)
+
+    # Vẽ modal xác nhận reset nếu show_reset_confirmation là True
+    if show_reset_confirmation:
+        s = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+        s.fill(MODAL_BG)
+        screen.blit(s, (0, 0))
+        
+        modal_width, modal_height = 300, 200
+        modal_x = (SCREEN_WIDTH - modal_width) // 2
+        modal_y = (SCREEN_HEIGHT - modal_height) // 2
+        
+        pygame.draw.rect(screen, MODAL_CONTENT, (modal_x, modal_y, modal_width, modal_height))
+        pygame.draw.rect(screen, BLACK, (modal_x, modal_y, modal_width, modal_height), 2)
+        
+        line1 = font_medium.render("Are you sure you", True, BLACK)
+        line2 = font_medium.render("want to reset the game?", True, BLACK)
+        line1_rect = line1.get_rect(center=(SCREEN_WIDTH//2, modal_y + 50))
+        line2_rect = line2.get_rect(center=(SCREEN_WIDTH//2, modal_y + 80))
+        screen.blit(line1, line1_rect)
+        screen.blit(line2, line2_rect)
+        
+        pygame.draw.rect(screen, (51, 51, 51), (modal_x + 50, modal_y + 100, 80, 40))
+        yes_text = font_medium.render("Yes", True, WHITE)
+        yes_rect = yes_text.get_rect(center=(modal_x + 90, modal_y + 120))
+        screen.blit(yes_text, yes_rect)
+        
+        pygame.draw.rect(screen, (51, 51, 51), (modal_x + 170, modal_y + 100, 80, 40))
+        no_text = font_medium.render("No", True, WHITE)
+        no_rect = no_text.get_rect(center=(modal_x + 210, modal_y + 120))
+        screen.blit(no_text, no_rect)
 
 def draw_modal():
     s = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
@@ -318,6 +376,7 @@ def reset_game():
 
 # Main game loop
 show_modal = False
+show_reset_confirmation = False
 running = True
 while running:
     for event in pygame.event.get():
@@ -338,7 +397,7 @@ while running:
                     game_state.current_screen = "game"
                     game_state.game_mode = "Human"
             
-            elif game_state.current_screen == "game" and not show_modal:
+            elif game_state.current_screen == "game" and not show_modal and not show_reset_confirmation:
                 if (BOARD_OFFSET_X <= mouse_pos[0] <= BOARD_OFFSET_X + BOARD_SIZE * SQUARE_SIZE and 
                     BOARD_OFFSET_Y <= mouse_pos[1] <= BOARD_OFFSET_Y + BOARD_SIZE * SQUARE_SIZE):
                     col = (mouse_pos[0] - BOARD_OFFSET_X) // SQUARE_SIZE
@@ -347,12 +406,26 @@ while running:
                 
                 elif (BOARD_OFFSET_X + BOARD_SIZE * SQUARE_SIZE - 100 <= mouse_pos[0] <= BOARD_OFFSET_X + BOARD_SIZE * SQUARE_SIZE - 60 and 
                       BOARD_OFFSET_Y - 40 <= mouse_pos[1] <= BOARD_OFFSET_Y):
-                    reset_game()
+                    show_reset_confirmation = True
                 
                 elif (BOARD_OFFSET_X + BOARD_SIZE * SQUARE_SIZE - 50 <= mouse_pos[0] <= BOARD_OFFSET_X + BOARD_SIZE * SQUARE_SIZE - 10 and 
                       BOARD_OFFSET_Y - 40 <= mouse_pos[1] <= BOARD_OFFSET_Y):
                     show_modal = True
             
+            elif show_reset_confirmation:
+                modal_width, modal_height = 300, 200
+                modal_x = (SCREEN_WIDTH - modal_width) // 2
+                modal_y = (SCREEN_HEIGHT - modal_height) // 2
+        
+                if (modal_x + 50 <= mouse_pos[0] <= modal_x + 130 and 
+                    modal_y + 100 <= mouse_pos[1] <= modal_y + 140):
+                    reset_game()
+                    show_reset_confirmation = False
+        
+                elif (modal_x + 170 <= mouse_pos[0] <= modal_x + 250 and 
+                      modal_y + 100 <= mouse_pos[1] <= modal_y + 140):
+                    show_reset_confirmation = False
+
             elif show_modal:
                 modal_width, modal_height = 300, 200
                 modal_x = (SCREEN_WIDTH - modal_width) // 2
