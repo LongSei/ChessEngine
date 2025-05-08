@@ -89,6 +89,69 @@ class ChessScore():
         """
         return self._evaluation_parameters['bishop_pair_bonus'] if len(board.pieces(chess.BISHOP, color)) >= 2 else 0
 
+    def knight_pair_score(self,
+                            board: chess.Board,
+                            color: chess.Color) -> int:
+        """
+        Calculate the score for having a pair of knights.
+        
+        Args:
+            board (chess.Board): The chess board.
+            color (chess.Color): The color of the pieces to evaluate (white or black).
+            
+        Returns:
+            int: The score for having a pair of knights.
+            
+        Example:
+            >>> board = chess.Board()
+            >>> score = knight_pair_score(board, chess.WHITE)
+            >>> print(score)
+            ... 1234
+        """
+        return self._evaluation_parameters['knight_pair_bonus'] if len(board.pieces(chess.KNIGHT, color)) >= 2 else 0
+    
+    def rook_pair_score(self,
+                        board: chess.Board,
+                        color: chess.Color) -> int:
+        """
+        Calculate the score for having a pair of rooks.
+        
+        Args:
+            board (chess.Board): The chess board.
+            color (chess.Color): The color of the pieces to evaluate (white or black).
+            
+        Returns:
+            int: The score for having a pair of rooks.
+            
+        Example:
+            >>> board = chess.Board()
+            >>> score = rook_pair_score(board, chess.WHITE)
+            >>> print(score)
+            ... 1234
+        """
+        return self._evaluation_parameters['rook_pair_bonus'] if len(board.pieces(chess.ROOK, color)) >= 2 else 0
+    
+    def queen_score(self,
+                    board: chess.Board,
+                    color: chess.Color) -> int:
+        """
+        Calculate the score for having a queen.
+
+        Args:
+            board (chess.Board): The chess board.
+            color (chess.Color): The color of the pieces to evaluate (white or black).
+
+        Returns:
+            int: The score for having a queen.
+            
+        Example:
+            >>> board = chess.Board()
+            >>> score = queen_score(board, chess.WHITE)
+            >>> print(score)
+            ... 1234
+        """
+        return self._evaluation_parameters['queen_bonus'] if len(board.pieces(chess.QUEEN, color)) >= 1 else 0
+    
     def rook_open_file_score(self, 
                              board: chess.Board, 
                              color: chess.Color) -> int:
@@ -194,10 +257,18 @@ class ChessScore():
         # 3) Structural & miscellanea
         for color in [True, False]:
             mult = 1 if color else -1
+            
             score_o += self.bishop_pair_score(board, color) * mult
             score_e += self.bishop_pair_score(board, color) * mult
+            score_o += self.knight_pair_score(board, color) * mult
+            score_e += self.knight_pair_score(board, color) * mult
+            score_o += self.rook_pair_score(board, color) * mult
+            score_e += self.rook_pair_score(board, color) * mult
+            score_o += self.queen_score(board, color) * mult
+            
             score_o += self.pawn_structure_score(board, color) * mult
             score_e += self.pawn_structure_score(board, color) * mult
+            
             score_o += self.rook_open_file_score(board, color) * mult
             score_e += self.rook_open_file_score(board, color) * mult
 

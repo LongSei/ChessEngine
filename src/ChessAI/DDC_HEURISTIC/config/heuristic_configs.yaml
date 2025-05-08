@@ -28,9 +28,9 @@ pst:
 
 evaluation_parameters:
   bishop_pair_bonus: 50
-  knight_pair_bonus: 45
-  rook_pair_bonus: 70
-  queen_bonus: 100
+  knight_pair_bonus: 50
+  rook_pair_bonus: 100
+  queen_bonus: 150
   passed_pawn_bonus: 20
   isolated_pawn_penalty: 10
   rook_open_file_bonus: 20
