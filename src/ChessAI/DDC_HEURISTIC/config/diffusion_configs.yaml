@@ -1,0 +1,4 @@
+diffusion_engine_configs: 
+  max_length: 328
+  model_to_load: "evaluation/diffusion_engine/output/chess10k_gold_s_asa/DDM-s_asa-bs1024-lr3e-4-ep200-T20-20250501-145644"
+  diffusion_steps: 2

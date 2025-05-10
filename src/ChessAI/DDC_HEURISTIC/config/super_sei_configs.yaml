@@ -1,0 +1,4 @@
+heuristic_config: ./config/heuristic_configs.yaml
+diffusion_config: ./config/diffusion_configs.yaml
+diffusion_max_attempts: 5
+heuristic_depth: 2

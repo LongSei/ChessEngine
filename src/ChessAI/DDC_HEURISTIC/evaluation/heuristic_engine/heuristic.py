@@ -1,10 +1,10 @@
 from .score import ChessScore
-from .utils import load_yaml
+from ..utils import load_yaml
 import chess
 
 class HeuristicEngine():
-    def __init__(self):
-        self.config = load_yaml('./config/heuristic_configs.yaml')
+    def __init__(self, config_path='./config/heuristic_configs.yaml'):
+        self.config = load_yaml(config_path)
         self.chess_score = ChessScore(self.config)
         
     def evaluate(self, board):

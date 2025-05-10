@@ -344,4 +344,4 @@ class DiffusionEngine:
                 
         # If no valid move found, select a random legal move
         print("Failed to get valid move from model. Using other engine move instead.")
-        return -1
+        return None
