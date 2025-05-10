@@ -316,6 +316,8 @@ class DiffusionEngine:
                     # Extract move from output
                     try:
                         move_text = res.split('[SEP]')[1].split(' ')[0][:4]
+                        if move_text.startswith('.'):
+                            move_text = res.split('[SEP]')[1].split(' ')[0][1:5]
                         print(f"Extracted move: {move_text}")
                         move = chess.Move.from_uci(move_text)
                         

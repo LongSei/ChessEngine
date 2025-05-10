@@ -257,18 +257,10 @@ class ChessScore():
         # 3) Structural & miscellanea
         for color in [True, False]:
             mult = 1 if color else -1
-            
             score_o += self.bishop_pair_score(board, color) * mult
             score_e += self.bishop_pair_score(board, color) * mult
-            score_o += self.knight_pair_score(board, color) * mult
-            score_e += self.knight_pair_score(board, color) * mult
-            score_o += self.rook_pair_score(board, color) * mult
-            score_e += self.rook_pair_score(board, color) * mult
-            score_o += self.queen_score(board, color) * mult
-            
             score_o += self.pawn_structure_score(board, color) * mult
             score_e += self.pawn_structure_score(board, color) * mult
-            
             score_o += self.rook_open_file_score(board, color) * mult
             score_e += self.rook_open_file_score(board, color) * mult
 
