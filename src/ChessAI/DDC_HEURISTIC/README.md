@@ -10,6 +10,11 @@
     - The network outputs a score 
 
 ### Minimax Search 
+- Minimax Search: This is a search algorithm that is used to find the best move in a game. 
+    - The algorithm works by recursively exploring the game tree and evaluating the possible moves at each level.
+    - The algorithm assumes that both players play optimally, and it tries to minimize the maximum loss for the player.
+- We use the score which be outputted from the DeepChess Score Estimator as the evaluation function for the Minimax Search.
+
 ![Minimax](./images/Minimax.png)
 ```peudo
 function minimax(position, depth, maximizingPlayer)
@@ -32,10 +37,56 @@ function minimax(position, depth, maximizingPlayer)
 
 // initial call
 minimax(currentPosition, 3, true)
+```
+
+#### Minimax Search with Alpha-Beta Pruning
+- Speed up the Minimax Search by eliminating branches that do not need to be explored.
+![Alpha-Beta](./images/Minimax_AlphaBeta.png)
+```peudo
+function minimax(position, depth, alpha, beta, maximizingPlayer)
+    if depth == 0 or game over in position
+        return static evaluation of position
+
+    if maximizingPlayer
+        maxEval = -infinity
+        for each child of position
+            eval = minimax(child, depth - 1, alpha, beta, false)
+            maxEval = max(maxEval, eval)
+            alpha = max(alpha, eval)
+            if beta <= alpha
+                break   // beta cutoff
+        return maxEval
+
+    else
+        minEval = +infinity
+        for each child of position
+            eval = minimax(child, depth - 1, alpha, beta, true)
+            minEval = min(minEval, eval)
+            beta = min(beta, eval)
+            if beta <= alpha
+                break   // alpha cutoff
+        return minEval
 
 ```
-## 2. Discrete Generative Model 
-### 2.1 Discrete Diffusion Model + ASA 
+
+## 2. Heuristic Search 
+
+| Component                  | Description                                                                 | Purpose                                                                 |
+|---------------------------|-----------------------------------------------------------------------------|-------------------------------------------------------------------------|
+| **1. Material Score**     | Fixed value per piece (e.g., pawn = 100, knight = 320)                      | Measure of piece count advantage                                        |
+| **2. Piece-Square Table (PST)** | Bonus/penalty per piece depending on its square location               | Encourage good piece positioning                                        |
+| **3. Game Phase Score**   | Interpolation factor (0 to 1) based on remaining material                   | Adjust importance of features between opening and endgame              |
+| **4. Pawn Structure Score** | Includes:                                                                 |                                                                         |
+| - Isolated Pawn Penalty  | - Penalty if no adjacent same-color pawns                                  | Penalize weak, undefended pawns                                         |
+| - Passed Pawn Bonus      | - Bonus for pawns with no enemy pawn in front or adjacent                   | Encourage promotion potential                                           |
+| **5. Bishop Pair Bonus** | Bonus if player owns both bishops                                           | Recognize strength in open positions                                    |
+| **6. Rook on Open File** | Bonus if rook is on a file with no pawns                                    | Encourage control of open files                                         |
+| **7. Mobility Score**     | Difference in number of legal moves between players                         | Favor active positions, punish cramped setups                           |
+| **8. Interpolation Score**| Weighted average of opening/endgame scores using game phase factor         | Make the evaluation responsive to game stage                           |
+
+$\implies$ Also use Minimax Search with Alpha-Beta Pruning to choose the best move for board state.
+## 3. Discrete Generative Model 
+### 3.1 Discrete Diffusion Model + ASA 
 #### Problem Settings
 - We describe Chess game as a Markov Process (Which is a type of Markov Decision Process - Given the current state, the next state is independent of the previous states)
     - State Space ($\mathcal S$): The state of the board 
@@ -70,6 +121,7 @@ In other words, we need to find the best policy $\pi^*$ that maximizes the value
     p_\theta(x_{0:T}) = p(x_T) \prod_{t=1}^T p_\theta(x_{t-1} | x_t)
     $$
 
+![FM](./images/FM.png)
 - We propose the target function for conditioning the forward process on the action $a$:
 $$
 K(q_\psi(\cdot | x), p_\theta(\cdot, x)) = \int_{-\infty}^{\infty} q_\psi(z|x)\log(\frac{q_\psi(z | x)}{p_\theta(z | x)})\\
@@ -152,6 +204,4 @@ $$
 
 ![DDA_ASA](./images/DDM_ASA.png)
 
-### 2.2 Discrete Flow Matching Model + ASA
-
-## 3. Heuristic Search 
+### 3.2 Discrete Flow Matching Model + ASA (In Progress)
