@@ -104,7 +104,7 @@ class PrioritizedReplayBuffer:
         self.capacity = capacity
         self.alpha = 0.6
         self.beta = 0.4
-        self.max_priority = 1.0  # Thêm giá trị khởi tạo
+        self.max_priority = 1.0
 
     def add(self, experience):
         self.buffer.append(experience)
@@ -186,42 +186,32 @@ def get_best_move(board, model):
     return legal_moves[np.argmax(q_values)]
 
 import sys
-import asyncio
-import chess.engine
 def evaluate_model(model, num_games=10):
     win_rate = 0
-    stockfish = None
     
     try:
-        # FIXME: Cant load model (library problem?)
-        stockfish_path = "./stockfish/stockfish-windows-x86-64-avx2.exe"
-        stockfish = chess.engine.SimpleEngine.popen_uci(stockfish_path)
-        
-        # Fix event loop cho Windows
-        if sys.platform == "win32":
-            policy = asyncio.WindowsProactorEventLoopPolicy()
-            asyncio.set_event_loop_policy(policy)
-            
         for _ in range(num_games):
             board = chess.Board()
             while not board.is_game_over():
-                if board.turn == chess.WHITE:
+                if board.turn == chess.WHITE:  # QNet as white
                     move = get_best_move(board, model)
-                else:
-                    result = stockfish.play(board, chess.engine.Limit(time=0.1))
-                    move = result.move
+                else:  # RE plays as Black
+                    move = random.choice(list(board.legal_moves))
+                
                 board.push(move)
                 
-            if board.result() == "1-0":
+            result = board.result()
+            if result == "1-0": # Won
                 win_rate += 1
-                
+            elif result == "0-1":  # Lost with RE
+                win_rate -= 1
+            elif result == "1/2-1/2": # Draw
+                win_rate -= 0.5
+            
         return win_rate / num_games
     except Exception as e:
-        print(f"Lỗi khi đánh giá: {e}")
+        print(f"Evaluation error: {e}")
         return 0.0
-    finally:
-        if stockfish is not None:  # Chỉ gọi quit() nếu đã khởi tạo thành công
-            stockfish.quit()
 
 
 def calculate_reward(board, move):
@@ -291,7 +281,7 @@ def generate_self_play_games(model, num_games=10):
                     encode_board(chess.Board(prev_fen)),
                     move,
                     calculate_reward(board, move),
-                    next_fen,  # Lưu FEN thay vì encoded state
+                    next_fen,  # save FEN instead of encoded state
                     board.is_game_over(),
                 )
             )
@@ -328,7 +318,7 @@ def train():
     step_counter = 0
 
     for episode in range(10000):
-        sample_input = torch.randn(1, 896 + 9).to(DEVICE)  # Đúng kích thước đầu vào
+        sample_input = torch.randn(1, 896 + 9).to(DEVICE)
         print("Input shape:", sample_input.shape)
         output = q_net(sample_input)
         print("Output shape:", output.shape)

@@ -71,18 +71,18 @@ function minimax(position, depth, alpha, beta, maximizingPlayer)
 
 ## 2. Heuristic Search 
 
-| Component                  | Description                                                                 | Purpose                                                                 |
-|---------------------------|-----------------------------------------------------------------------------|-------------------------------------------------------------------------|
-| **1. Material Score**     | Fixed value per piece (e.g., pawn = 100, knight = 320)                      | Measure of piece count advantage                                        |
-| **2. Piece-Square Table (PST)** | Bonus/penalty per piece depending on its square location               | Encourage good piece positioning                                        |
-| **3. Game Phase Score**   | Interpolation factor (0 to 1) based on remaining material                   | Adjust importance of features between opening and endgame              |
-| **4. Pawn Structure Score** | Includes:                                                                 |                                                                         |
-| - Isolated Pawn Penalty  | - Penalty if no adjacent same-color pawns                                  | Penalize weak, undefended pawns                                         |
-| - Passed Pawn Bonus      | - Bonus for pawns with no enemy pawn in front or adjacent                   | Encourage promotion potential                                           |
-| **5. Bishop Pair Bonus** | Bonus if player owns both bishops                                           | Recognize strength in open positions                                    |
-| **6. Rook on Open File** | Bonus if rook is on a file with no pawns                                    | Encourage control of open files                                         |
-| **7. Mobility Score**     | Difference in number of legal moves between players                         | Favor active positions, punish cramped setups                           |
-| **8. Interpolation Score**| Weighted average of opening/endgame scores using game phase factor         | Make the evaluation responsive to game stage                           |
+| Component                       | Description                                                        | Purpose                                                   |
+| ------------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------- |
+| **1. Material Score**           | Fixed value per piece (e.g., pawn = 100, knight = 320)             | Measure of piece count advantage                          |
+| **2. Piece-Square Table (PST)** | Bonus/penalty per piece depending on its square location           | Encourage good piece positioning                          |
+| **3. Game Phase Score**         | Interpolation factor (0 to 1) based on remaining material          | Adjust importance of features between opening and endgame |
+| **4. Pawn Structure Score**     | Includes:                                                          |                                                           |
+| - Isolated Pawn Penalty         | - Penalty if no adjacent same-color pawns                          | Penalize weak, undefended pawns                           |
+| - Passed Pawn Bonus             | - Bonus for pawns with no enemy pawn in front or adjacent          | Encourage promotion potential                             |
+| **5. Bishop Pair Bonus**        | Bonus if player owns both bishops                                  | Recognize strength in open positions                      |
+| **6. Rook on Open File**        | Bonus if rook is on a file with no pawns                           | Encourage control of open files                           |
+| **7. Mobility Score**           | Difference in number of legal moves between players                | Favor active positions, punish cramped setups             |
+| **8. Interpolation Score**      | Weighted average of opening/endgame scores using game phase factor | Make the evaluation responsive to game stage              |
 
 $\implies$ Also use Minimax Search with Alpha-Beta Pruning to choose the best move for board state.
 ## 3. Discrete Generative Model 

@@ -122,8 +122,43 @@
 
 ---
 
-## **7. Notable Design Choices**
+## **7. Training Results & Critical Limitations**  
 
-1. **Action Encoding**: Normalizes move squares (`from_square/63`, `to_square/63`).
-2. **Board Augmentation**: Random rotations/flips for data diversity.
-3. **Delayed Rewards**: Adds game outcome reward to all transitions in an episode.
+### **Observed Performance**  
+
+- **After 1 Day of Training**:  
+  - **Strengths**:  
+    - Learns basic piece capture logic (e.g., takes undefended pawns).  
+    - Avoids blatantly illegal moves (due to legal move filtering).  
+  - **Weaknesses**:  
+    - **No strategic understanding**: Fails to develop pieces, control center, or plan checkmates.  
+    - **Inconsistent play**: Often sacrifices major pieces for minor rewards (e.g., trades queen for pawn).  
+    - **Worse than "Martin" baseline** (likely a rule-based bot): Loses >95% of games due to random mid-game blunders.  
+
+### **Evaluation Failure Impact**  
+
+- **Stockfish Loading Issue**:  
+  - **Symptoms**: Engine fails to initialize (`Exception` in `evaluate_model()`).
+  
+  - **Consequences**:  
+    - No reliable evaluation → progress measured via self-play rewards (easily gamed).  
+    - Cannot benchmark against a ground-truth opponent.  
+
+### **Failure Analysis**  
+
+| **Component**       | **Issue**                                                                 | **Evidence**                               |  
+|----------------------|---------------------------------------------------------------------------|--------------------------------------------|  
+| **Reward Function**  | Short-term material rewards dominate → no long-term planning.             | Bot trades queens for pawns (+0.1 reward). |  
+| **Exploration**      | High initial ε (`EPSILON_START=1.0`) → random moves dilute learning.      | 70% of early games are random moves.       |  
+| **Network Capacity** | Input encoding (903D) may lose critical info.  | Fails to recognize pinned pieces.          |  
+
+### **Lessons Learned**  
+
+1. **Training Duration**:  
+   - Chess requires weeks/months of training (1 day is insufficient for strategic depth).  
+2. **Reward Design**:  
+   - Material rewards alone fail to capture positional play. Need checkmate detection + positional bonuses.  
+3. **Evaluation**:  
+   - Without Stockfish, progress metrics are misleading (self-play rewards ≠ true skill).  
+
+---
