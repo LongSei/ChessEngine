@@ -82,14 +82,12 @@
 - **Flow**:  
   `Board → encode_board() → QNet → Q-values → ε-greedy action → New state`  
 
-
 ### **b) Experience Replay ↔ Training**  
 
 - **Loop**:  
   1. Self-play games → Buffer (with priorities).  
   2. Sample batch → Compute loss → Update QNet.  
   3. Adjust priorities → Repeat.  
-
 
 ### **c) Target Network Stabilization**  
 
@@ -129,5 +127,3 @@
 1. **Action Encoding**: Normalizes move squares (`from_square/63`, `to_square/63`).  
 2. **Board Augmentation**: Random rotations/flips for data diversity.  
 3. **Delayed Rewards**: Adds game outcome reward to all transitions in an episode.  
-
----
