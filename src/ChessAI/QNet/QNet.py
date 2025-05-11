@@ -1,11 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# # Q-Network implementation
-
-# In[67]:
-
-
 import chess
 import torch
 import torch.nn as nn
@@ -15,11 +7,6 @@ import random
 from collections import deque
 from torch.utils.tensorboard import SummaryWriter
 
-
-# In[68]:
-
-
-# Config
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {DEVICE}")
 
@@ -32,12 +19,6 @@ SYNC_INTERVAL = 200
 EPSILON_START = 1.0
 EPSILON_END = 0.1
 EPSILON_DECAY = 0.99999
-
-
-# ## Encode the board for Q-Net input
-
-# In[69]:
-
 
 def encode_board(board):
     # 3D piece encoding (8x8x14)
@@ -77,7 +58,7 @@ def encode_board(board):
 
 # ## Q-Network implementation
 
-# In[70]:
+# In[7]:
 
 
 class ChessQNetwork(nn.Module):
@@ -116,10 +97,6 @@ class ChessQNetwork(nn.Module):
         
         return self.fc(combined)
 
-
-# In[71]:
-
-
 class PrioritizedReplayBuffer:
     def __init__(self, capacity):
         self.buffer = deque(maxlen=capacity)
@@ -153,16 +130,11 @@ class PrioritizedReplayBuffer:
         return indices, samples, weights
 
     def update_priorities(self, indices, priorities):
-        # Thêm clipping để tránh giá trị không hợp lệ
         priorities = np.clip(priorities, 1e-5, None)
         
         for idx, priority in zip(indices, priorities):
             self.priorities[idx] = (priority + 1e-5) ** self.alpha
             self.max_priority = max(self.max_priority, priority)
-
-
-# In[72]:
-
 
 def augment_data(state, move):
     # Random rotation (0-3) and flip
@@ -191,9 +163,6 @@ def augment_data(state, move):
     return rotated_state, chess.Move(from_sq, to_sq)
 
 
-# In[73]:
-
-
 def get_best_move(board, model):
     legal_moves = list(board.legal_moves)
     if not legal_moves:
@@ -216,43 +185,37 @@ def get_best_move(board, model):
 
     return legal_moves[np.argmax(q_values)]
 
-
-# In[74]:
-
-
 import sys
 import asyncio
 import chess.engine
-
-
 def evaluate_model(model, num_games=10):
     win_rate = 0
-    stockfish = None  # Khởi tạo trước để tránh UnboundLocalError
-
+    stockfish = None
+    
     try:
-        # Chỉ định đường dẫn chính xác đến Stockfish
+        # FIXME: Cant load model (library problem?)
         stockfish_path = "./stockfish/stockfish-windows-x86-64-avx2.exe"
         stockfish = chess.engine.SimpleEngine.popen_uci(stockfish_path)
-
+        
         # Fix event loop cho Windows
-        # if sys.platform == "win32":
-        #     asyncio.set_event_loop_policy(chess.engine.EventLoopPolicy())
-
-        # for _ in range(num_games):
-        #     board = chess.Board()
-        #     while not board.is_game_over():
-        #         if board.turn == chess.WHITE:
-        #             move = get_best_move(board, model)
-        #         else:
-        #             result = stockfish.play(board, chess.engine.Limit(time=0.1))
-        #             move = result.move
-        #         board.push(move)
-
-        #     if board.result() == "1-0":
-        #         win_rate += 1
-
-        # return win_rate / num_games
-        return random.random()
+        if sys.platform == "win32":
+            policy = asyncio.WindowsProactorEventLoopPolicy()
+            asyncio.set_event_loop_policy(policy)
+            
+        for _ in range(num_games):
+            board = chess.Board()
+            while not board.is_game_over():
+                if board.turn == chess.WHITE:
+                    move = get_best_move(board, model)
+                else:
+                    result = stockfish.play(board, chess.engine.Limit(time=0.1))
+                    move = result.move
+                board.push(move)
+                
+            if board.result() == "1-0":
+                win_rate += 1
+                
+        return win_rate / num_games
     except Exception as e:
         print(f"Lỗi khi đánh giá: {e}")
         return 0.0
@@ -261,16 +224,11 @@ def evaluate_model(model, num_games=10):
             stockfish.quit()
 
 
-# In[75]:
-
-
 def calculate_reward(board, move):
     reward = 0
     
-    # Tạo bản copy của board để không làm thay đổi board gốc
     temp_board = board.copy()
     
-    # 1. Giá trị quân cờ (material balance)
     piece_values = {
         chess.PAWN: 1,
         chess.KNIGHT: 3,
@@ -280,42 +238,36 @@ def calculate_reward(board, move):
         chess.KING: 0
     }
     
-    # Tính toán material trước và sau nước đi
     material_before = sum(piece_values[p.piece_type] for p in temp_board.piece_map().values())
     
-    # Thực hiện move trên bản copy
-    if temp_board.is_legal(move):  # Kiểm tra tính hợp lệ trước khi push
+    if temp_board.is_legal(move):
         temp_board.push(move)
         material_after = sum(piece_values[p.piece_type] for p in temp_board.piece_map().values())
     else:
-        # Phạt nặng nếu move không hợp lệ
+        # Punish if not legal
         return -10.0
     
     reward += (material_after - material_before) * 0.1
 
-    # 2. Kiểm soát trung tâm
+    #center control
     center_squares = [chess.D4, chess.D5, chess.E4, chess.E5]
     center_control = sum(1 for sq in center_squares if temp_board.is_attacked_by(temp_board.turn, sq))
     reward += center_control * 0.05
 
-    # 3. An toàn của vua
+    # king safety
     king_square = temp_board.king(temp_board.turn)
     safety_penalty = -0.02 * len(temp_board.attackers(not temp_board.turn, king_square))
     reward += safety_penalty
 
-    # 4. Hoạt động của quân
+    # 4. pieces activity
     mobility = len(list(temp_board.legal_moves)) / 100
     reward += mobility * 0.1
 
-    # 5. Phạt đứng yên
+    # 5. punish for repetition
     if temp_board.is_repetition(2):
         reward -= 0.1
 
     return reward
-
-
-# In[76]:
-
 
 def generate_self_play_games(model, num_games=10):
     buffer = []
@@ -359,8 +311,6 @@ def generate_self_play_games(model, num_games=10):
         buffer.extend(game_history)
     return buffer
 
-
-# In[ ]:
 
 
 def train():
