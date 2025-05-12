@@ -6,6 +6,7 @@ import chess
 from engine import get_engine_move
 import asyncio
 import platform
+import time
 
 # Initialize pygame
 pygame.init()
@@ -54,7 +55,7 @@ MODAL_BG = (0, 0, 0, 128)
 MODAL_CONTENT = (255, 255, 255)
 
 # Screen and board settings
-SCREEN_WIDTH, SCREEN_HEIGHT = 800, 800
+SCREEN_WIDTH, SCREEN_HEIGHT = 1200, 800
 BOARD_SIZE = 8
 SQUARE_SIZE = 80
 BOARD_OFFSET_X = (SCREEN_WIDTH - BOARD_SIZE * SQUARE_SIZE) // 2
@@ -75,6 +76,9 @@ class GameState:
         self.chess_board = chess.Board()
         self.board = [[""] * 8 for _ in range(8)]
         self.sync_board()
+        self.ai_thinking_time = 0  # Thời gian AI suy nghĩ (giây)
+        self.last_ai_move_time = 0  # Thời điểm AI bắt đầu suy nghĩ
+        self.engine_thinking = False
         self.piece_image_map = {
             "r": "black_rook.png",
             "n": "black_knight.png",
@@ -126,7 +130,7 @@ class GameState:
             return surf
 
     def _load_background(self):
-        bg = load_image("background.jpg")
+        bg = load_image("background.png")
         if bg:
             return pygame.transform.scale(bg, (SCREEN_WIDTH, SCREEN_HEIGHT))
         else:
@@ -151,26 +155,62 @@ class GameState:
 game_state = GameState()
 
 def draw_welcome_screen():
+    # Vẽ hình nền với hiệu ứng mờ hoặc gradient
     screen.blit(game_state.background, (0, 0))
-    title = font_large.render("Chess Game", True, WHITE)
-    title_rect = title.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//2 - 100))
+    
+    # Thêm lớp phủ mờ để làm nổi bật nội dung
+    overlay = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT), pygame.SRCALPHA)
+    overlay.fill((0, 0, 0, 128))  # Màu đen với độ trong suốt 50%
+    screen.blit(overlay, (0, 0))
+    
+    # Tiêu đề game với hiệu ứng bóng
+    title = font_large.render("CHESS MASTER", True, WHITE)
+    title_shadow = font_large.render("CHESS MASTER", True, (50, 50, 50))
+    title_rect = title.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//4))
+    screen.blit(title_shadow, (title_rect.x+3, title_rect.y+3))
     screen.blit(title, title_rect)
-    pygame.draw.rect(screen, (51, 51, 51), (SCREEN_WIDTH//2 - 150, SCREEN_HEIGHT//2, 300, 50))
-    ai_text = font_medium.render("Play vs AI", True, WHITE)
-    ai_rect = ai_text.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//2 + 25))
+    
+    # Phụ đề
+    subtitle = font_medium.render("Choose your opponent", True, (200, 200, 200))
+    subtitle_rect = subtitle.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//4 + 70))
+    screen.blit(subtitle, subtitle_rect)
+    
+    # Nút Play vs AI với hiệu ứng hover
+    ai_button_rect = pygame.Rect(SCREEN_WIDTH//2 - 150, SCREEN_HEIGHT//2, 300, 60)
+    ai_button_color = (74, 117, 44) if ai_button_rect.collidepoint(pygame.mouse.get_pos()) else (106, 168, 79)
+    pygame.draw.rect(screen, ai_button_color, ai_button_rect, border_radius=10)
+    pygame.draw.rect(screen, WHITE, ai_button_rect, 2, border_radius=10)  # Viền trắng
+    ai_text = font_medium.render("AI VS AI", True, WHITE)
+    ai_rect = ai_text.get_rect(center=ai_button_rect.center)
     screen.blit(ai_text, ai_rect)
-    pygame.draw.rect(screen, (51, 51, 51), (SCREEN_WIDTH//2 - 150, SCREEN_HEIGHT//2 + 70, 300, 50))
-    human_text = font_medium.render("Play vs Human", True, WHITE)
-    human_rect = human_text.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT//2 + 95))
+    
+    # Nút Play vs Human với hiệu ứng hover
+    human_button_rect = pygame.Rect(SCREEN_WIDTH//2 - 150, SCREEN_HEIGHT//2 + 90, 300, 60)
+    human_button_color = (44, 82, 117) if human_button_rect.collidepoint(pygame.mouse.get_pos()) else (66, 135, 245)
+    pygame.draw.rect(screen, human_button_color, human_button_rect, border_radius=10)
+    pygame.draw.rect(screen, WHITE, human_button_rect, 2, border_radius=10)  # Viền trắng
+    human_text = font_medium.render("HUMAN VS AI", True, WHITE)
+    human_rect = human_text.get_rect(center=human_button_rect.center)
     screen.blit(human_text, human_rect)
+    
+    # Footer với thông tin tác giả/phiên bản
+    footer = font_small.render("© 2025 Chess Master | Version 1.0", True, (150, 150, 150))
+    footer_rect = footer.get_rect(center=(SCREEN_WIDTH//2, SCREEN_HEIGHT - 30))
+    screen.blit(footer, footer_rect)
 
 def draw_game_screen():
     screen.fill((225, 208, 181))
     pygame.draw.rect(screen, (176, 123, 79), 
                     (BOARD_OFFSET_X - 20, BOARD_OFFSET_Y - 60, 
                      BOARD_SIZE * SQUARE_SIZE + 40, BOARD_SIZE * SQUARE_SIZE + 80))
-    mode_text = font_medium.render(f"Mode: {'AI' if game_state.game_mode == 'AI' else 'Human'}", True, WHITE)
+    mode_text = font_medium.render(
+        f"Mode: {'AI vs AI' if game_state.game_mode == 'AI_VS_AI' else 'Human vs AI'} | "
+        f"Turn: {'WHITE' if game_state.current_player == 'white' else 'BLACK'}",
+        True, WHITE
+    )
     turn_text = font_medium.render(f"Turn: {'White' if game_state.current_player == 'white' else 'Black'}", True, WHITE)
+    # Hiển thị thời gian suy nghĩ của AI
+    time.sleep(0.5)
     screen.blit(mode_text, (BOARD_OFFSET_X + 200, BOARD_OFFSET_Y - 40))
     screen.blit(turn_text, (BOARD_OFFSET_X + 400, BOARD_OFFSET_Y - 40))
     for row in range(BOARD_SIZE):
@@ -288,6 +328,9 @@ def get_possible_moves(row, col):
     return moves
 
 def handle_square_click(row, col):
+     # Chỉ xử lý click nếu là chế độ Human vs AI và đến lượt người chơi (white)
+    if game_state.game_mode == "HUMAN_VS_AI" and game_state.current_player != "white":
+        return
     if game_state.selected_piece:
         move = next((m for m in game_state.possible_moves if m['row'] == row and m['col'] == col), None)
         if move:
@@ -314,14 +357,39 @@ def reset_game():
     game_state.current_player = 'white'
     game_state.selected_piece = None
     game_state.possible_moves = []
+    game_state.ai_thinking_time = 0
+    game_state.last_ai_move_time = 0
+    game_state.engine_thinking = False
 
 async def handle_ai_move():
-    if game_state.game_mode == "AI" and game_state.current_player == "black":
-        move = get_engine_move(game_state.chess_board)
-        if move in game_state.chess_board.legal_moves:
-            game_state.chess_board.push(move)
-            game_state.sync_board()
-            game_state.current_player = 'white'
+    if game_state.game_mode == "AI_VS_AI" or \
+       (game_state.game_mode == "HUMAN_VS_AI" and game_state.current_player == "black"):
+        
+        if game_state.engine_thinking:
+            return
+            
+        game_state.engine_thinking = True
+        game_state.last_ai_move_time = pygame.time.get_ticks()
+        
+        try:
+            move = await asyncio.wait_for(
+                asyncio.to_thread(get_engine_move, game_state.chess_board),
+                timeout=10
+            )
+            
+            game_state.ai_thinking_time = (pygame.time.get_ticks() - game_state.last_ai_move_time) / 1000
+            
+            if move in game_state.chess_board.legal_moves:
+                game_state.chess_board.push(move)
+                game_state.sync_board()
+                game_state.current_player = 'white' if game_state.current_player == 'black' else 'black'
+                
+        except asyncio.TimeoutError:
+            game_state.ai_thinking_time = 10.0
+            print("AI took too long to move!")
+            # Xử lý khi quá thời gian
+        finally:
+            game_state.engine_thinking = False
 
 async def main():
     global show_modal, show_reset_confirmation, running
@@ -339,16 +407,18 @@ async def main():
                 mouse_pos = pygame.mouse.get_pos()
                 
                 if game_state.current_screen == "welcome":
+                    # AI vs AI mode
                     if (SCREEN_WIDTH//2 - 150 <= mouse_pos[0] <= SCREEN_WIDTH//2 + 150 and 
-                        SCREEN_HEIGHT//2 <= mouse_pos[1] <= SCREEN_HEIGHT//2 + 50):
+                        SCREEN_HEIGHT//2 <= mouse_pos[1] <= SCREEN_HEIGHT//2 + 60):
                         game_state.current_screen = "game"
-                        game_state.game_mode = "AI"
+                        game_state.game_mode = "AI_VS_AI"  # Chế độ mới
                         reset_game()
                     
+                    # Human vs AI mode
                     elif (SCREEN_WIDTH//2 - 150 <= mouse_pos[0] <= SCREEN_WIDTH//2 + 150 and 
-                          SCREEN_HEIGHT//2 + 70 <= mouse_pos[1] <= SCREEN_HEIGHT//2 + 120):
+                          SCREEN_HEIGHT//2 + 90 <= mouse_pos[1] <= SCREEN_HEIGHT//2 + 150):
                         game_state.current_screen = "game"
-                        game_state.game_mode = "Human"
+                        game_state.game_mode = "HUMAN_VS_AI"  # Chế độ mới
                         reset_game()
                 
                 elif game_state.current_screen == "game" and not show_modal and not show_reset_confirmation:
